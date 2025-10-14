@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus leaders</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@preline/preline@2.0.0/dist/preline.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <base target="_self">
+   <link rel="stylesheet" href="main.css">
+   <script src="https://unpkg.com/imagekit-javascript"></script>
+
+  
+   <!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-white text-gray-900 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-gray-200 fixed w-full z-10">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16 items-center">
+    
+      <div class="flex items-center space-x-6">
+       
+        <a href="dashboard.html" class="flex items-center gap-3">
+          <img src="logo.png" alt="Campus Leaders logo" class="h-20 w-auto" />
+          
+        </a>
+
+        <!-- nav links (hidden on small screens) -->
+        <div class="hidden md:flex md:space-x-6">
+          <a href="dashboard.html" data-section="dashboard" class="nav-item px-1 py-2 text-sm active-tab">Home</a>
+          <a href="profile.html" data-section="forum" class="nav-item px-1 py-2 text-sm">Profile</a>
+          <a href="about.html" data-section="courses" class="nav-item px-1 py-2 text-sm">About Us</a>
+          <a href="contact.html" data-section="codelab" class="nav-item px-1 py-2 text-sm">Support</a>
+        </div>
+      </div>
+
+      <!-- CENTER / RIGHT: search + icons -->
+      <div class="flex items-center space-x-4">
+        <!-- Search (visible md and up) -->
+        <form action="" method="GET" class="hidden md:flex items-center w-80">
+          <label for="global-search" class="sr-only">Search</label>
+          <div class="relative flex-1">
+            <input id="global-search" name="q" type="search" placeholder="Search profile, members, posts..." 
+                   class="w-full bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:bg-two" />
+            <button type="submit" aria-label="Search" class="absolute right-1 top-1/2 transform -translate-y-1/2 p-2 rounded-full bghover">
+              <i class="fas fa-search text-gray-600"></i>
+            </button>
+          </div>
+        </form>
+
+        <!-- Mobile: search button toggles a small search bar -->
+        <button id="mobile-search-btn" class="md:hidden p-2 rounded-full bghover" aria-expanded="false" aria-controls="mobile-search">
+          <i class="fas fa-search"></i>
+        </button>
+
+     
+
+        <!-- user menu -->
+        <div class="relative">
+          <button id="user-menu-button" class="flex items-center p-1 rounded-full focus:outline-none" aria-expanded="false" aria-haspopup="true">
+            <div class="h-8 w-8 rounded-full bg-linear text-white flex items-center justify-center">
+              <i class="fas fa-user"></i>
+            </div>
+          </button>
+
+          <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200" role="menu" aria-hidden="true">
+            <a href="#" data-section="profile" class="block px-4 py-2 bghover" role="menuitem">Profile</a>
+            <a href="#" data-section="settings" class="block px-4 py-2 bghover" role="menuitem">Settings</a>
+            <a href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile search overlay (hidden by default) -->
+  <div id="mobile-search" class="hidden md:hidden border-t border-gray-200 bg-white px-4 py-3">
+    <form action="/search" method="GET" class="flex items-center gap-2">
+      <label for="mobile-search-input" class="sr-only">Search</label>
+      <input id="mobile-search-input" name="q" type="search" placeholder="Search courses, members, posts..." 
+             class="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none" />
+      <button type="submit" aria-label="Search" class="p-2 rounded-full bghover">
+        <i class="fas fa-search"></i>
+      </button>
+      <button id="mobile-search-close" type="button" class="p-2 rounded-full bghover" aria-label="Close search">
+        <i class="fas fa-times"></i>
+      </button>
+    </form>
+  </div>
+</nav>
+
+
+
+    <main class="pt-20 pb-8">
+        <!-- Dashboard -->
+        <section id="dashboard" class="section active max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <!-- Left Sidebar -->
+                <div class="lg:col-span-1 space-y-6">
+                    <!-- Profile Card -->
+                    <div class="card bg-white p-6 border border-gray-200">
+                        <div class="flex flex-col items-center">
+                            <div class="h-20 w-20 rounded-full  bg-linear text-white flex items-center justify-center mb-3 text-2xl">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <h3 class="font-bold">John Obi</h3>
+                            <p class="text-sm text-gray-500 mb-4">SUG President</p>
+                            <div class="w-full border-t border-gray-200 pt-4">
+                                <div class="flex justify-between text-sm mb-2">
+                                    <span class="text-gray-500">UNILAG 2019</span>
+                                    <span class="font-medium"></span>
+                                </div>
+                               
+                            </div>
+                        </div>
+                    </div>
+                    
+                  
+                </div>
+                
+                <!-- Main Content -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Create Post -->
+                    <div class="card bg-white p-4 border border-gray-200">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="h-10 w-10 rounded-full  bg-linear text-white flex items-center justify-center">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            <button class="flex-1 text-left px-4 py-2 bg-gray-100 rounded-full bghover text-gray-500">
+                                Start a post...
+                            </button>
+                        </div>
+                   
+                    </div>
+                    
+      
+
+                    
+                    
+                </div>
+                
+                
+                 <div class="lg:col-span-1 space-y-6">
+                 
+                    
+                    <!-- Trending Discussions -->
+          <div class="card bg-white p-6 border border-gray-200">
+            <h3 class="font-bold mb-4">Trending News</h3>
+            <div class="space-y-4 trending-news-list">
+              <div class="text-sm text-gray-500 p-2">Loading news…</div>
+            </div>
+            <!-- <button class="w-full mt-4 btn-primary py-2 rounded-full text-sm font-medium">View all</button> -->
+          </div>
+                </div>
+            </div>
+            
+        </section>
+
+        <!-- Forum -->
+  
+
+ 
+
+   
+            
+      
+               
+   
+       
+
+  
+    </main>
+
+    <footer class="bg-gray-900 text-white border-t border-gray-200 py-8 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+          <h3 class="font-bold text-lg mb-4">Campus leaders</h3>
+          <p class="text-sm text-white">The community for sharing, and growing together.</p>
+        </div>
+        <div>
+          <h4 class="font-medium mb-3">Community</h4>
+          <ul class="space-y-2">
+          
+            <li><a href="#" class="text-sm text-white hover">Events</a></li>
+           
+          </ul>
+        </div>
+      
+        <div>
+          <h4 class="font-medium mb-3">Company</h4>
+          <ul class="space-y-2">
+            <li><a href="about.html" class="text-sm text-white hover">About</a></li>
+          
+            <li><a href="contact.html" class="text-sm text-white hover">Contact</a></li>
+          </ul>
+        </div> 
+         <div>
+          <h4 class="font-medium mb-3">Socials</h4>
+          <ul class="space-y-2">
+            <li>  <a href="#" class="text-white hover"><i class="fab fa-twitter"></i></a>  Twitter</li>
+          
+          
+            <li><a href="#" class="text-white hover"><i class="fab fa-linkedin"></i></a> linkedin</li>
+            <li> <a href="#" class="text-white hover"><i class="fab fa-facebook"></i></a> Facebook</li>
+          </ul>
+        </div> 
+      
+      </div>
+    
+    </div>
+  </footer>
+
+    <script src="script.js" defer> 
+    </script>
+    <script>
+/* Mobile hamburger + nav behavior for your provided nav.
+   - Injects a hamburger button (visible on mobile).
+   - Creates a mobile menu that contains your nav links + user menu items.
+   - Toggles mobile search, user menu, and mobile nav; closes on outside click or ESC.
+*/
+
+document.addEventListener('DOMContentLoaded', () => {
+  const nav = document.querySelector('nav.bg-white');
+  if (!nav) return;
+
+  // Find the left area that contains logo + desktop links
+  const leftArea = nav.querySelector('.flex.items-center.space-x-6') || nav.querySelector('div > .flex');
+  const desktopLinksContainer = nav.querySelector('div.hidden.md\\:flex') || nav.querySelector('.md\\:flex');
+  const userMenu = document.getElementById('user-menu');
+  const userMenuButton = document.getElementById('user-menu-button');
+  const mobileSearchBtn = document.getElementById('mobile-search-btn');
+  const mobileSearch = document.getElementById('mobile-search');
+  const mobileSearchClose = document.getElementById('mobile-search-close');
+
+  // Create hamburger button (inserted near logo/links)
+  const burgerBtn = document.createElement('button');
+  burgerBtn.id = 'mobile-menu-button';
+  burgerBtn.className = 'md:hidden p-2 rounded bghover';
+  burgerBtn.type = 'button';
+  burgerBtn.setAttribute('aria-expanded', 'false');
+  burgerBtn.setAttribute('aria-controls', 'mobile-menu');
+  burgerBtn.innerHTML = '<i class="fas fa-bars" aria-hidden="true"></i>';
+  // place burger before desktop links (so it's next to logo)
+  if (leftArea) leftArea.insertBefore(burgerBtn, desktopLinksContainer || leftArea.firstChild);
+
+  // Build mobile menu container (hidden by default)
+  const mobileMenu = document.createElement('div');
+  mobileMenu.id = 'mobile-menu';
+  mobileMenu.className = 'hidden md:hidden border-t border-gray-200 bg-white px-4 py-3';
+  mobileMenu.setAttribute('aria-hidden', 'true');
+
+  // Populate mobile menu with desktop links (clone)
+  if (desktopLinksContainer) {
+    const clonedLinks = desktopLinksContainer.cloneNode(true);
+    // remove classes that hide on mobile
+    clonedLinks.className = clonedLinks.className.replace(/\bhidden\b/g, '').replace(/\bmd\:flex\b/g, '');
+    // make links block-level for mobile
+    const linksWrapper = document.createElement('div');
+    linksWrapper.className = 'space-y-2';
+    // move anchor children into wrapper and make them full width
+    Array.from(clonedLinks.querySelectorAll('a')).forEach(a => {
+      const a2 = a.cloneNode(true);
+      a2.classList.add('block', 'px-2', 'py-2', 'text-sm');
+      linksWrapper.appendChild(a2);
+    });
+    mobileMenu.appendChild(linksWrapper);
+  }
+
+  // If there is a user-menu (desktop), clone it into mobile menu as options
+  if (userMenu) {
+    const userTitle = document.createElement('div');
+    userTitle.className = 'mt-3 mb-1 text-xs text-gray-500 uppercase';
+    userTitle.textContent = 'Account';
+    mobileMenu.appendChild(userTitle);
+
+    const ul = document.createElement('div');
+    ul.className = 'space-y-1';
+    Array.from(userMenu.querySelectorAll('a')).forEach(a => {
+      const ap = a.cloneNode(true);
+      ap.classList.remove('block'); // ensure consistent classes
+      ap.classList.add('block', 'px-2', 'py-2', 'text-sm');
+      ul.appendChild(ap);
+    });
+    mobileMenu.appendChild(ul);
+  }
+
+  // Insert mobileMenu right after nav content
+  nav.appendChild(mobileMenu);
+
+  // helper: toggle element visibility with aria attributes
+  function setVisible(el, visible) {
+    if (!el) return;
+    if (visible) {
+      el.classList.remove('hidden');
+      el.setAttribute('aria-hidden', 'false');
+    } else {
+      // if an element inside is focused, move focus back to the burger button to avoid aria-hidden-on-focused-element issues
+      try {
+        if (el.contains(document.activeElement)) {
+          if (burgerBtn && typeof burgerBtn.focus === 'function') burgerBtn.focus();
+          else document.body.focus && document.body.focus();
+        }
+      } catch (e) { /* ignore */ }
+      el.classList.add('hidden');
+      el.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  // Toggle mobile menu
+  function toggleMobileMenu() {
+    const open = !mobileMenu.classList.contains('hidden');
+    // if it's open -> close; else open
+    setVisible(mobileMenu, open ? false : true);
+    burgerBtn.setAttribute('aria-expanded', String(open ? false : true));
+    // swap icon
+    const icon = burgerBtn.querySelector('i');
+    if (icon) icon.className = open ? 'fas fa-bars' : 'fas fa-times';
+    // if opening mobile menu, close mobile search and user menu
+    if (!open) {
+      if (mobileSearch && !mobileSearch.classList.contains('hidden')) {
+        setVisible(mobileSearch, false);
+      }
+      if (userMenu && !userMenu.classList.contains('hidden')) {
+        userMenu.classList.add('hidden');
+        userMenuButton && userMenuButton.setAttribute('aria-expanded', 'false');
+      }
+    }
+  }
+
+  burgerBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMobileMenu();
+  });
+
+  // Close mobile menu when a mobile menu link is clicked
+  mobileMenu.addEventListener('click', (ev) => {
+    const a = ev.target.closest && ev.target.closest('a');
+    if (a) {
+      const text = (a.textContent || '').trim().toLowerCase();
+      // handle sign-out specially (works for cloned links too)
+      if (/sign\s*out/.test(text)) {
+        ev.preventDefault();
+        // prefer central helper if present
+        if (window.CampusLeaders && typeof window.CampusLeaders.signOutNow === 'function') {
+          window.CampusLeaders.signOutNow();
+        } else if (typeof auth !== 'undefined' && auth && typeof auth.signOut === 'function') {
+          auth.signOut().then(() => { window.location.href = '/index.html'; }).catch(() => { window.location.href = '/index.html'; });
+        } else {
+          localStorage.removeItem('auth_token');
+          window.location.href = '/index.html';
+        }
+        // close the menu UI
+        setVisible(mobileMenu, false);
+        burgerBtn.setAttribute('aria-expanded', 'false');
+        const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
+        return;
+      }
+      // non sign-out link: let default action proceed but close mobile menu
+      setVisible(mobileMenu, false);
+      burgerBtn.setAttribute('aria-expanded', 'false');
+      const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
+    }
+  });
+
+  // wire document click to close menus when clicking outside
+  document.addEventListener('click', (e) => {
+    const target = e.target;
+    // if click inside mobileMenu, burgerBtn, userMenu, userMenuButton, or mobileSearch -> ignore
+    if (
+      mobileMenu.contains(target) ||
+      burgerBtn.contains(target) ||
+      (userMenu && userMenu.contains(target)) ||
+      (userMenuButton && userMenuButton.contains(target)) ||
+      (mobileSearch && mobileSearch.contains(target)) ||
+      (mobileSearchBtn && mobileSearchBtn.contains(target))
+    ) return;
+
+    // close mobile menu
+    if (!mobileMenu.classList.contains('hidden')) {
+      setVisible(mobileMenu, false);
+      burgerBtn.setAttribute('aria-expanded', 'false');
+      const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
+    }
+    // close user menu (desktop)
+    if (userMenu && !userMenu.classList.contains('hidden')) {
+      try { if (userMenu.contains(document.activeElement)) userMenuButton && userMenuButton.focus(); } catch(e){}
+      userMenu.classList.add('hidden');
+      userMenuButton && userMenuButton.setAttribute('aria-expanded', 'false');
+    }
+    // close mobile search
+    if (mobileSearch && !mobileSearch.classList.contains('hidden')) {
+      setVisible(mobileSearch, false);
+      mobileSearchBtn && mobileSearchBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // ESC key closes everything
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') {
+      if (!mobileMenu.classList.contains('hidden')) {
+        setVisible(mobileMenu, false);
+        burgerBtn.setAttribute('aria-expanded', 'false');
+        const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
+      }
+      if (userMenu && !userMenu.classList.contains('hidden')) {
+        userMenu.classList.add('hidden');
+        userMenuButton && userMenuButton.setAttribute('aria-expanded', 'false');
+      }
+      if (mobileSearch && !mobileSearch.classList.contains('hidden')) {
+        setVisible(mobileSearch, false);
+        mobileSearchBtn && mobileSearchBtn.setAttribute('aria-expanded', 'false');
+      }
+    }
+  });
+
+  // Wire existing user menu button (desktop) to toggle menu
+  if (userMenuButton && userMenu) {
+    userMenuButton.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const isHidden = userMenu.classList.contains('hidden');
+      if (isHidden) {
+        userMenu.classList.remove('hidden');
+        userMenuButton.setAttribute('aria-expanded', 'true');
+        // close mobile menu/search if open
+        setVisible(mobileMenu, false);
+        setVisible(mobileSearch, false);
+        burgerBtn.setAttribute('aria-expanded', 'false');
+        const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
+      } else {
+        userMenu.classList.add('hidden');
+        userMenuButton.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  // Mobile search toggle already exists in markup: hook it
+  if (mobileSearchBtn && mobileSearch) {
+    mobileSearchBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const open = !mobileSearch.classList.contains('hidden');
+      setVisible(mobileSearch, open ? false : true);
+      mobileSearchBtn.setAttribute('aria-expanded', String(open ? false : true));
+      // if opening mobile search, close mobile menu and user menu
+      if (!open) {
+        setVisible(mobileMenu, false);
+        if (userMenu) { userMenu.classList.add('hidden'); userMenuButton && userMenuButton.setAttribute('aria-expanded','false'); }
+        burgerBtn.setAttribute('aria-expanded', 'false');
+        const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
+      }
+    });
+  }
+  // close mobile search when user clicks the close button
+  if (mobileSearchClose) {
+    mobileSearchClose.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      setVisible(mobileSearch, false);
+      mobileSearchBtn && mobileSearchBtn.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  // Accessibility: ensure focus trap isn't required here, but focus first link when opening mobile menu
+  burgerBtn.addEventListener('keydown', (ev) => {
+    if ((ev.key === 'Enter' || ev.key === ' ') && !mobileMenu.classList.contains('hidden')) {
+      // If opened, move focus into first link
+      const firstLink = mobileMenu.querySelector('a');
+      if (firstLink) firstLink.focus();
+    }
+  });
+
+  // If the mobile menu exists and window is resized to desktop, ensure mobile-menu hidden
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 768) {
+      setVisible(mobileMenu, false);
+      burgerBtn.setAttribute('aria-expanded', 'false');
+      const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
+      if (mobileSearch) setVisible(mobileSearch, false);
+      if (userMenu) { userMenu.classList.add('hidden'); userMenuButton && userMenuButton.setAttribute('aria-expanded','false'); }
+    }
+  });
+});
+</script>
+</body>
+</script>
+<script src="news-loader.js" defer></script>
+</body>
+</html>

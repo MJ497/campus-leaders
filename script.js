@@ -1,0 +1,1475 @@
+// script.js (updated — Uploadcare support)
+// Requires: Firebase compat SDKs already included in the page (you have them).
+// Assumes Firestore collections: posts, users, payments (optional).
+
+/* ========== CONFIG ========== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDC3L5vruhYXfarn5O81cLld50oagYkmxE",
+  authDomain: "campus-leaders.firebaseapp.com",
+  projectId: "campus-leaders",
+  storageBucket: "campus-leaders.firebasestorage.app",
+  messagingSenderId: "445360528951",
+  appId: "1:445360528951:web:712da8859c8ac4cb6129b2"
+};
+// UPLOADCARE settings (replaces ImageKit)
+const UPLOADCARE_PUBLIC_KEY = "2683b7806064b3db73e3"; // <-- replace with your Uploadcare public key
+const UPLOADCARE_BASE_UPLOAD = "https://upload.uploadcare.com/base/"; // REST upload endpoint
+const UPLOADCARE_CDN = "https://12hsb3bgrj.ucarecd.net/"; // CDN base for uploaded files
+
+const POSTS_COLLECTION = "posts";
+const POSTS_PAGE_LIMIT = 50;
+/* ============================ */
+
+let USE_FIREBASE = false;
+let auth = null, db = null;
+(function initFirebase() {
+  try {
+    if (window.firebase && FIREBASE_CONFIG && FIREBASE_CONFIG.projectId) {
+      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      auth = firebase.auth();
+      db = firebase.firestore();
+      USE_FIREBASE = true;
+      console.log("Firebase initialized in dashboard.");
+    } else {
+      console.warn("Firebase SDK or config missing — running limited demo mode.");
+    }
+  } catch (err) {
+    console.error("Firebase init error:", err);
+  }
+})();
+// ---------- Firestore robustness + diagnostics (drop-in) ----------
+try {
+  if (db && db.settings) {
+    // Force long-polling (works around proxies/adblock that block WebChannel transport)
+    try { db.settings({ experimentalForceLongPolling: true }); console.log('Firestore: force long polling enabled'); }
+    catch (e) { console.warn('Could not set Firestore longPolling setting:', e); }
+  }
+} catch(e) { console.warn('Firestore settings block skipped', e); }
+
+// Basic diagnostic helper you can call from console:
+// CampusLeaders.diagnose() -> prints quick connectivity checks
+window.CampusLeaders = window.CampusLeaders || {};
+window.CampusLeaders.diagnose = async function diagnose() {
+  console.log('Diagnosing connectivity: navigator.onLine=', navigator.onLine);
+  // minimal fetch test to Uploadcare CDN (CORS may block full info but will show network failures)
+  try {
+    const t0 = performance.now();
+    await fetch((UPLOADCARE_CDN || '/'), { method: 'HEAD', mode: 'no-cors' });
+    console.log('Uploadcare CDN HEAD (opaque/no-cors) attempted — no CORS error means network OK; time:', Math.round(performance.now()-t0), 'ms');
+  } catch (e) { console.warn('Uploadcare HEAD failed (network/CORS):', e); }
+  // Firestore raw endpoint reachability test (may be blocked by CORS in browser) — useful to detect network-level blocks
+  try {
+    const url = 'https://firestore.googleapis.com/v1/projects/' + (FIREBASE_CONFIG.projectId || ''); 
+    await fetch(url, { method: 'GET', mode: 'no-cors' });
+    console.log('FIRESTORE REST HEAD attempted (no-cors) — if this fails the network likely blocks googleapis.');
+  } catch (e) { console.warn('Firestore ping failed:', e); }
+};
+
+// If realtime onSnapshot fails, we will fallback to a polling GET. Helper to attach robust listener:
+function attachRobustPostsListener(containerEl, opts = {}) {
+  if (!db) return;
+  const path = (opts.collection || 'posts');
+  // Try realtime first
+  try {
+    const q = db.collection(path).orderBy('createdAt','desc').limit(opts.limit || 50);
+    const unsubscribe = q.onSnapshot(snapshot => {
+      // normal realtime callback
+      containerEl.innerHTML = '';
+      snapshot.forEach(doc => {
+        const data = { id: doc.id, ...doc.data() };
+        const node = renderPost(data); // your existing renderPost
+        containerEl.appendChild(node);
+        // populate author image asynchronously if you use user docs:
+        if (data.authorId) populateAuthorInPostElement && populateAuthorInPostElement(node, data);
+      });
+    }, (err) => {
+      console.warn('Realtime onSnapshot error (will fallback to polling/get):', err);
+      showOfflineBanner && showOfflineBanner();
+      // fallback to one-time fetch then enable polling
+      fallbackGetAndPoll();
+    });
+    return unsubscribe;
+  } catch (e) {
+    console.warn('Failed to attach onSnapshot; using fallback get+poll', e);
+    fallbackGetAndPoll();
+  }
+
+  // fallback implementation
+  let pollTimer = null;
+  async function fallbackGetAndPoll() {
+    try {
+      const snap = await db.collection(path).orderBy('createdAt','desc').limit(opts.limit || 50).get();
+      containerEl.innerHTML = '';
+      snap.forEach(doc => {
+        const data = { id: doc.id, ...doc.data() };
+        const node = renderPost(data);
+        containerEl.appendChild(node);
+        if (data.authorId) populateAuthorInPostElement && populateAuthorInPostElement(node, data);
+      });
+      // periodic polling every 10s (adjust as needed)
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(async () => {
+        try {
+          const s2 = await db.collection(path).orderBy('createdAt','desc').limit(opts.limit || 50).get();
+          containerEl.innerHTML = '';
+          s2.forEach(doc => {
+            const d = { id: doc.id, ...doc.data() };
+            const n = renderPost(d);
+            containerEl.appendChild(n);
+            if (d.authorId) populateAuthorInPostElement && populateAuthorInPostElement(n, d);
+          });
+        } catch (err) {
+          console.warn('Polling GET failed:', err);
+        }
+      }, opts.pollInterval || 10000);
+    } catch (err) {
+      console.error('Fallback GET failed (likely network/proxy issue):', err);
+      // show offline warning
+      showOfflineBanner && showOfflineBanner();
+    }
+  }
+}
+
+// small offline banner used above
+function showOfflineBanner() {
+  if (document.getElementById('firestore-offline-banner')) return;
+  const el = document.createElement('div');
+  el.id = 'firestore-offline-banner';
+  el.textContent = 'You appear offline or Firestore is blocked — showing cached/fallback content.';
+  Object.assign(el.style, { position:'fixed', right:'20px', top:'80px', zIndex:99999, padding:'8px 12px', background:'#f59e0b', color:'#fff', borderRadius:'8px' });
+  document.body.appendChild(el);
+  setTimeout(()=> el.remove(), 6000);
+}
+window.addEventListener('offline', showOfflineBanner);
+
+// Image robust loader helper: normalize Uploadcare links and auto-retry if an image fails to load.
+function makeImgElement(src, cls = '') {
+  const img = document.createElement('img');
+  img.className = cls;
+  img.loading = 'lazy';
+  let finalSrc = normalizeImageUrl ? normalizeImageUrl(src) : src;
+  img.src = finalSrc;
+  // onerror fallback: try alternate extension (.jpg/.png) or fallback placeholder
+  img.onerror = function() {
+    console.warn('Image failed to load:', finalSrc);
+    // try adding .jpg if there's no extension
+    if (!/\.[a-z0-9]{2,5}($|\?)/i.test(finalSrc)) {
+      this.src = finalSrc + '.jpg';
+      return;
+    }
+    // final fallback: small transparent dataURI or placeholder
+    this.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="100%" height="100%" fill="%23e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%236b7280" font-size="16">No image</text></svg>';
+  };
+  return img;
+}
+
+// normalizeImageUrl helper (re-usable)
+// If URL is already a full URL, leave it. If it's an Uploadcare file id (uuid-like) or a relative path, prepend CDN.
+function normalizeImageUrl(url) {
+  try {
+    if (!url) return url;
+    const u = url.trim();
+    // if it's already an Uploadcare CDN URL return as-is
+    if (UPLOADCARE_CDN && u.indexOf(UPLOADCARE_CDN) === 0) return u;
+    // if it's a full HTTP/HTTPS URL, return as-is
+    if (/^https?:\/\//i.test(u)) return u;
+    // if it's a simple uuid or path (no protocol), prepend CDN
+    if (UPLOADCARE_CDN) {
+      // strip leading slashes
+      const filePart = u.replace(/^\/+/, '');
+      return `${UPLOADCARE_CDN}/${filePart}`;
+    }
+    return u;
+  } catch (e) { return url; }
+}
+
+// Example usage: replace your existing attach call with:
+const feedEl = document.getElementById('posts-feed') || document.querySelector('#posts-feed');
+if (feedEl) {
+  // detach any previous listeners if needed, then attach robust listener:
+  attachRobustPostsListener(feedEl, { collection: 'posts', limit: 50, pollInterval: 10000 });
+}
+
+// Also ensure your auth sign-in uses Firebase SDK (replace server POST login):
+// Example to sign in with Firebase email/password:
+async function signInWithEmail(email, password) {
+  try { await firebase.auth().signInWithEmailAndPassword(email, password); console.log('Signed in'); }
+  catch (err) { console.error('Firebase sign-in failed', err); throw err; }
+}
+
+// ---------- Dashboard: populate profile + post author avatars ----------
+// Assumes firebase compat has been initialized and `auth`, `db` exist.
+
+const userCache = new Map(); // uid -> userDoc
+
+// small UI helpers (tweak selectors if you changed markup)
+function setSidebarProfile(userDoc, firebaseUser) {
+  // name element in your sidebar: <h3 class="font-bold">John Obi</h3>
+  const nameEl = document.querySelector('.card .font-bold');
+  if (nameEl) {
+    const fn = userDoc?.firstName || (firebaseUser?.displayName || '').split(' ')[0] || '';
+    const ln = userDoc?.lastName  || (firebaseUser?.displayName || '').split(' ').slice(1).join(' ') || '';
+    nameEl.textContent = `${fn} ${ln}`.trim() || 'Member';
+  }
+
+  // position text (the small p under name): .card p.text-sm.text-gray-500.mb-4
+  const posEl = document.querySelector('.card p.text-sm.text-gray-500.mb-4');
+  if (posEl) posEl.textContent = userDoc?.position || userDoc?.association || '';
+
+  // bottom text line (school/year). There is a span with text-gray-500; use more specific guard:
+  const schoolSpan = document.querySelector('.card .w-full .text-gray-500');
+  if (schoolSpan) {
+    const school = userDoc?.schoolName || firebaseUser?.schoolName || '';
+    const year = userDoc?.yearHeld || '';
+    schoolSpan.textContent = [school, year].filter(Boolean).join(' ').trim();
+  }
+
+  // avatar div: find the element and insert <img>
+  const avatarContainer = document.querySelector('.card .h-20.w-20.rounded-full');
+  if (avatarContainer) {
+    const src = (firebaseUser && firebaseUser.photoURL) || userDoc?.imageUrl || null;
+    if (src) {
+      // replace contents with <img> to preserve layout
+      avatarContainer.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = normalizeImageUrl(src);
+      img.alt = (nameEl?.textContent || 'avatar');
+      img.className = 'h-20 w-20 rounded-full object-cover';
+      img.loading = 'lazy';
+      // to be safe if browser blocks crossOrigin we don't set crossorigin unless needed
+      avatarContainer.appendChild(img);
+    }
+  }
+}
+
+// fetch Firestore user doc cached
+async function fetchUserDoc(uid) {
+  if (!uid) return null;
+  if (userCache.has(uid)) return userCache.get(uid);
+  try {
+    const snap = await db.collection('users').doc(uid).get();
+    if (!snap.exists) { userCache.set(uid, null); return null; }
+    const data = snap.data();
+    userCache.set(uid, data);
+    return data;
+  } catch (e) {
+    console.warn('fetchUserDoc error', e);
+    return null;
+  }
+}
+
+// hook auth state to populate sidebar
+if (firebase && firebase.auth) {
+  firebase.auth().onAuthStateChanged(async user => {
+    if (!user) {
+      // not logged in: optionally clear UI
+      return;
+    }
+    // prefer Firestore user doc (contains fields you saved)
+    let udoc = null;
+    try { udoc = (await db.collection('users').doc(user.uid).get()).data(); } catch(e){ console.warn('read user doc failed', e); }
+    setSidebarProfile(udoc, user);
+  });
+}
+
+// --- patch to render posts with author avatar + name ---
+// Find renderPost() in your script and replace the header-building part with this helper usage.
+// If you cannot find it, insert this function and call it after you append a post DOM node.
+
+async function populateAuthorInPostElement(wrapperEl, post) {
+  // wrapperEl is the container returned by renderPost, `post` has post.authorId or post.authorName
+  const leftBlock = wrapperEl.querySelector('.flex.items-center.space-x-3');
+  if (!leftBlock) return;
+  // If authorId provided, fetch user
+  if (post.authorId) {
+    const udoc = await fetchUserDoc(post.authorId);
+    const authorName = (udoc && ((udoc.firstName||'') + ' ' + (udoc.lastName||''))) || post.authorName || 'Anonymous';
+    const photo = (udoc && udoc.imageUrl) || (udoc && udoc.photoURL) || null;
+    // replace avatar area (first child) with image
+    const avatarDiv = leftBlock.querySelector('div') || null;
+    if (avatarDiv) {
+      avatarDiv.innerHTML = '';
+      const img = document.createElement('img');
+      img.className = 'h-10 w-10 rounded-full object-cover';
+      img.alt = authorName;
+      img.loading = 'lazy';
+      if (photo) img.src = normalizeImageUrl(photo);
+      else img.src = ''; // keep blank — could use placeholder
+      avatarDiv.appendChild(img);
+    }
+    // name and time area
+    const nameEl = leftBlock.querySelector('div > h4') || leftBlock.querySelector('h4');
+    if (nameEl) nameEl.textContent = authorName;
+  } else {
+    // no author id: keep existing authorName text but ensure avatar placeholder
+    const avatarDiv = leftBlock.querySelector('div') || null;
+    if (avatarDiv && avatarDiv.innerHTML.trim() === '') {
+      avatarDiv.innerHTML = '<div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center"><i class="fas fa-user"></i></div>';
+    }
+  }
+}
+
+// modify your post rendering flow: after you append a post node call populateAuthorInPostElement(node, post);
+// Example: const node = renderPost(post); container.appendChild(node); populateAuthorInPostElement(node, post);
+
+// ---------- handle Firestore transport errors: offline fallback ----------
+function showOfflineBanner() {
+  // simple transient message; add more UI if you like
+  const id = 'firestore-offline-banner';
+  if (document.getElementById(id)) return;
+  const el = document.createElement('div');
+  el.id = id;
+  el.textContent = 'You appear offline or Firestore is blocked — showing cached content.';
+  el.style.position = 'fixed';
+  el.style.top = '72px';
+  el.style.right = '20px';
+  el.style.zIndex = '9999';
+  el.style.padding = '8px 12px';
+  el.style.background = '#f59e0b';
+  el.style.color = '#fff';
+  el.style.borderRadius = '8px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 6000);
+}
+
+window.addEventListener('online', () => {
+  // re-enable firestore network
+  if (db && db.enableNetwork) {
+    db.enableNetwork().catch(e => console.warn('enableNetwork failed', e));
+  }
+});
+window.addEventListener('offline', () => {
+  showOfflineBanner();
+});
+
+// Wrap your realtime listener creation with a try/catch and fall back to one-shot .get() if Listen fails.
+// Example:
+// try { db.collection('posts').orderBy('createdAt','desc').onSnapshot(...); }
+// catch(e) { console.warn('onSnapshot failed, falling back', e); db.collection('posts').orderBy('createdAt','desc').get()... }
+
+
+
+/* ---------------- DOM anchors (keep UI unchanged) ---------------- */
+const startPostBtn = document.querySelector("button.flex-1.text-left.px-4.py-2.bg-gray-100.rounded-full");
+const createPostCard = startPostBtn ? startPostBtn.closest(".card") : null;
+function findFeedInsertionNode() {
+  if (!createPostCard) return document.querySelector("main") || document.body;
+  return createPostCard.parentNode;
+}
+
+/* ---------------- composer modal (unchanged behaviour) ---------------- */
+function createComposerModal() {
+  const overlay = document.createElement("div");
+  overlay.id = "composer-overlay";
+  overlay.style.position = "fixed";
+  overlay.style.left = 0; overlay.style.top = 0;
+  overlay.style.width = "100%"; overlay.style.height = "100%";
+  overlay.style.display = "none"; overlay.style.alignItems = "center"; overlay.style.justifyContent = "center";
+  overlay.style.zIndex = 9999; overlay.style.backdropFilter = "blur(4px)"; overlay.style.padding = "20px";
+
+  const card = document.createElement("div");
+  card.className = "bg-white rounded-lg shadow-lg w-full max-w-2xl p-4";
+  card.style.maxHeight = "90vh"; card.style.overflowY = "auto";
+
+  const header = document.createElement("div");
+  header.className = "flex justify-between items-center mb-3";
+  header.innerHTML = `<h3 class="font-bold">Create a post</h3>`;
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "px-3 py-1 rounded bghover"; closeBtn.textContent = "Close";
+  closeBtn.addEventListener("click", hide);
+  header.appendChild(closeBtn);
+
+  const body = document.createElement("div");
+  body.innerHTML = `
+    <div class="mb-3">
+      <input id="composer-title" type="text" placeholder="Post title (optional)" class="w-full rounded-md border-gray-200 bg-gray-50 px-3 py-2 text-sm" />
+    </div>
+    <div class="mb-3">
+      <textarea id="composer-body" rows="6" placeholder="Write something to your community..." class="w-full rounded-md border-gray-200 bg-gray-50 px-3 py-2 text-sm"></textarea>
+    </div>
+    <div class="mb-3 flex items-center gap-3">
+      <input id="composer-image" type="file" accept="image/*" class="text-sm" />
+      <div id="composer-image-name" class="text-xs text-gray-500"></div>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button id="composer-submit" class="px-4 py-2 rounded-md bg-two text-white">Post</button>
+    </div>
+  `;
+
+  card.appendChild(header); card.appendChild(body); overlay.appendChild(card);
+  function show() { overlay.style.display = "flex"; }
+  function hide() { overlay.style.display = "none"; }
+  return { el: overlay, show, hide };
+}
+const composer = createComposerModal();
+document.body.appendChild(composer.el);
+const composerImageInput = composer.el.querySelector("#composer-image");
+const composerImageName = composer.el.querySelector("#composer-image-name");
+composerImageInput.addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  composerImageName.textContent = f ? `${f.name} (${Math.round(f.size/1024)} KB)` : "";
+});
+if (startPostBtn) startPostBtn.addEventListener("click", () => { composer.show(); composer.el.querySelector("#composer-body").focus(); });
+
+/* ---------------- search modal (new) ---------------- */
+function createSearchModal() {
+  const overlay = document.createElement("div");
+  overlay.id = "search-overlay";
+  overlay.style.position = "fixed"; overlay.style.left = 0; overlay.style.top = 0; overlay.style.width = "100%"; overlay.style.height = "100%";
+  overlay.style.display = "none"; overlay.style.alignItems = "center"; overlay.style.justifyContent = "center";
+  overlay.style.zIndex = 9999; overlay.style.backdropFilter = "blur(4px)"; overlay.style.padding = "20px";
+  const card = document.createElement("div");
+  card.className = "bg-white rounded-lg shadow-lg w-full max-w-3xl p-4";
+  card.style.maxHeight = "90vh"; card.style.overflowY = "auto";
+  const header = document.createElement("div"); header.className = "flex items-center justify-between mb-3";
+  header.innerHTML = `<input id="search-input-modal" placeholder="Search users & posts..." class="w-full rounded-md border-gray-200 bg-gray-50 px-3 py-2 text-sm" />`;
+  const closeBtn = document.createElement("button"); closeBtn.className = "ml-3 px-3 py-1 rounded bghover"; closeBtn.textContent = "Close";
+  closeBtn.addEventListener("click", () => overlay.style.display = "none");
+  header.appendChild(closeBtn);
+  const results = document.createElement("div"); results.id = "search-results"; results.className = "space-y-3";
+  card.appendChild(header); card.appendChild(results); overlay.appendChild(card);
+  return { el: overlay, show: () => overlay.style.display = "flex", hide: () => overlay.style.display = "none", input: header.querySelector("#search-input-modal"), results };
+}
+const searchModal = createSearchModal();
+document.body.appendChild(searchModal.el);
+const globalSearch = document.getElementById("global-search");
+if (globalSearch) {
+  globalSearch.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      await doSearch(globalSearch.value.trim());
+    }
+  });
+  // if user clicks magnifier, show modal
+  const searchForm = globalSearch.closest("form");
+  if (searchForm) {
+    searchForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await doSearch(globalSearch.value.trim());
+    });
+  }
+}
+document.getElementById("mobile-search-btn")?.addEventListener("click", () => {
+  const mobileSearch = document.getElementById("mobile-search");
+  if (mobileSearch) mobileSearch.classList.toggle("hidden");
+});
+
+/* --------------- user menu toggle + signout --------------- */
+const userMenuButton = document.getElementById("user-menu-button");
+const userMenu = document.getElementById("user-menu");
+if (userMenuButton && userMenu) {
+  userMenuButton.addEventListener("click", (e) => {
+    e.stopPropagation();
+    userMenu.classList.toggle("hidden");
+  });
+  // close on outside click
+  document.addEventListener("click", (e) => {
+    if (!userMenu.contains(e.target) && !userMenuButton.contains(e.target)) {
+      userMenu.classList.add("hidden");
+    }
+  });
+  // Sign out
+  userMenu.querySelectorAll("a").forEach(a => {
+    if (a.textContent.toLowerCase().includes("sign out") || a.textContent.toLowerCase().includes("signout")) {
+      a.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        if (window.CampusLeaders && typeof window.CampusLeaders.signOutNow === 'function') {
+            window.CampusLeaders.signOutNow();
+          } else if (USE_FIREBASE && auth) {
+            try { await auth.signOut(); } catch(e) { console.warn('Sign out error:', e); }
+            window.location.href = '/index.html';
+          } else {
+            localStorage.removeItem("auth_token");
+            window.location.href = "/index.html";
+          }
+      });
+    }
+  });
+}
+
+/* ---------------- posts container insertion ---------------- */
+const insertionNode = findFeedInsertionNode();
+const postsContainer = document.createElement("div");
+postsContainer.id = "posts-feed";
+postsContainer.className = "lg:col-span-2 space-y-6";
+(function insertFeed() {
+  if (!insertionNode) return;
+  if (createPostCard && createPostCard.parentNode) createPostCard.parentNode.insertBefore(postsContainer, createPostCard.nextSibling);
+  else insertionNode.appendChild(postsContainer);
+})();
+
+/* --------------- helper: upload to Uploadcare (optional) --------------- */
+// - Uses Uploadcare REST unsigned upload with public key. Sets UPLOADCARE_STORE=1 so file is stored and served from CDN.
+// - If you prefer Uploadcare widget, you can include their widget script and adapt to use it instead.
+async function uploadToUploadcare(file) {
+  if (!UPLOADCARE_PUBLIC_KEY) throw new Error("Uploadcare public key not set (UPLOADCARE_PUBLIC_KEY).");
+  console.log('uploadToUploadcare: starting upload', file && file.name);
+
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('UPLOADCARE_PUB_KEY', UPLOADCARE_PUBLIC_KEY);
+    form.append('UPLOADCARE_STORE', '1'); // store and make available on CDN
+
+    const resp = await fetch(UPLOADCARE_BASE_UPLOAD, {
+      method: 'POST',
+      body: form
+    });
+
+    const data = await resp.json();
+    console.log('Uploadcare upload response', resp.status, data);
+    if (!resp.ok) {
+      // try to invert to readable message
+      const msg = data?.error?.message || data?.detail || data?.message || JSON.stringify(data);
+      throw new Error('Uploadcare upload failed: ' + msg);
+    }
+
+    // data.file contains the file UUID or path. Build CDN url.
+    // example: data.file = "3f6d4b8b-.../" or "3f6d4b8b-..."
+    const fileId = (data && data.file) ? String(data.file).replace(/^\/+|\/+$/g, '') : null;
+    if (!fileId) throw new Error('Uploadcare did not return file id');
+
+    const cdnUrl = `${UPLOADCARE_CDN}/${fileId}/`;
+    return cdnUrl;
+  } catch (err) {
+    console.error('uploadToUploadcare failed', err);
+    throw err;
+  }
+}
+
+/* ---------------- render post with avatar, counts, like/comment/share interactions ---------------- */
+function renderPost(postDoc) {
+  const post = { id: postDoc.id || postDoc.id, ...postDoc };
+  const created = post.createdAt && post.createdAt.toDate ? post.createdAt.toDate() : (post.createdAt ? new Date(post.createdAt) : new Date());
+  const timeAgo = timeSince(created);
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "card bg-white p-6 border border-gray-200 mb-4";
+  wrapper.dataset.postId = post.id;
+
+  // header with avatar + name
+  const header = document.createElement("div"); header.className = "flex items-center justify-between mb-4";
+  const left = document.createElement("div"); left.className = "flex items-center space-x-3";
+
+  // avatar (author)
+  const avatarWrap = document.createElement("div");
+  const avatarUrl = post.authorImageUrl || post.author?.imageUrl || null;
+  if (avatarUrl) {
+    const img = document.createElement("img");
+    img.src = avatarUrl;
+    img.alt = post.authorName || "avatar";
+    img.className = "h-10 w-10 rounded-full object-cover";
+    avatarWrap.appendChild(img);
+  } else {
+    avatarWrap.innerHTML = `<div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center"><i class="fas fa-user"></i></div>`;
+  }
+  left.appendChild(avatarWrap);
+
+  const meta = document.createElement("div");
+  const fullName = post.authorFirst && post.authorLast ? `${post.authorFirst} ${post.authorLast}` : (post.authorName || "Anonymous");
+  meta.innerHTML = `<h4 class="font-bold">${escapeHtml(fullName)}</h4><p class="text-xs text-gray-500">${escapeHtml(timeAgo)}</p>`;
+  left.appendChild(meta);
+
+  header.appendChild(left);
+
+  // options menu (three-dots) with conditional Delete for post owner
+  const menuWrap = document.createElement('div'); menuWrap.className = 'relative';
+  const more = document.createElement("button"); more.className = "text-gray-400 hover p-2 rounded"; more.setAttribute('aria-haspopup','true'); more.setAttribute('aria-expanded','false'); more.innerHTML = `<i class="fas fa-ellipsis-h"></i>`;
+
+  const menu = document.createElement('div');
+  // keep menu hidden by default; use a class name so we can hide other menus when opening
+  menu.className = 'post-options-menu hidden absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded shadow-lg z-50';
+  menu.innerHTML = `<div class="py-1"></div>`;
+
+  // determine if current user can delete this post (author match)
+  const canDelete = (function() {
+    try {
+      if (USE_FIREBASE && auth && auth.currentUser && post.authorId) return auth.currentUser.uid === post.authorId;
+      // local fallback: compare displayed profile name with post author name (best-effort)
+      if (!USE_FIREBASE) {
+        const nameEl = document.querySelector('section#dashboard .lg\\:col-span-1 .card h3.font-bold') || document.querySelector('.card h3.font-bold');
+        const currentName = nameEl ? nameEl.textContent.trim() : null;
+        const postName = ((post.authorFirst||'') + ' ' + (post.authorLast||'')).trim();
+        if (currentName && postName) return currentName === postName;
+      }
+    } catch (e) { }
+    return false;
+  })();
+
+  // Add menu items
+  const menuInner = menu.querySelector('div');
+  // View/Open (use existing modal opener)
+  const openItem = document.createElement('a');
+  openItem.href = '#'; openItem.className = 'block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'; openItem.textContent = 'Open post';
+  openItem.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); if (post.id) openPostInModal(post.id); else openPostInModal(post.id || post._localId || null); menu.classList.add('hidden'); });
+  menuInner.appendChild(openItem);
+
+  if (canDelete) {
+    const delItem = document.createElement('a');
+    delItem.href = '#'; delItem.className = 'block px-4 py-2 text-sm text-red-600 hover:bg-gray-50'; delItem.textContent = 'Delete post';
+    delItem.addEventListener('click', async (ev) => {
+      ev.preventDefault(); ev.stopPropagation(); menu.classList.add('hidden');
+      // show confirmation modal
+      const modal = document.createElement('div');
+      modal.style.position = 'fixed'; modal.style.left = 0; modal.style.top = 0; modal.style.width = '100%'; modal.style.height = '100%';
+      modal.style.zIndex = 100000; modal.style.display = 'flex'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center';
+      modal.style.backdropFilter = 'blur(3px)';
+      const card = document.createElement('div'); card.className = 'bg-white rounded-lg p-4 max-w-lg w-full border border-gray-200';
+      const title = document.createElement('div'); title.className = 'font-semibold text-lg mb-2'; title.textContent = 'Delete post?';
+      const body = document.createElement('div'); body.className = 'text-sm text-gray-700 mb-4'; body.innerHTML = escapeHtml(post.title || (post.body||'').slice(0,200)).replace(/\n/g, '<br>');
+      const btnRow = document.createElement('div'); btnRow.className = 'flex justify-end gap-2';
+      const cancel = document.createElement('button'); cancel.className = 'px-3 py-1 border rounded'; cancel.textContent = 'Cancel';
+      const confirm = document.createElement('button'); confirm.className = 'px-3 py-1 bg-red-600 text-white rounded'; confirm.textContent = 'Delete';
+      btnRow.appendChild(cancel); btnRow.appendChild(confirm);
+      card.appendChild(title); card.appendChild(body); card.appendChild(btnRow);
+      modal.appendChild(card); document.body.appendChild(modal);
+
+      const cleanupModal = () => modal.remove();
+      cancel.addEventListener('click', () => cleanupModal());
+
+      confirm.addEventListener('click', async () => {
+        // perform deletion (Firestore or localStorage fallback)
+        try {
+          if (USE_FIREBASE && db && post.id) {
+            await db.collection(POSTS_COLLECTION).doc(post.id).delete();
+            cleanupModal(); wrapper.remove(); showTransientMessage('Post deleted.');
+            return;
+          }
+          // local fallback
+          const arr = JSON.parse(localStorage.getItem('campus_posts_v1') || '[]');
+          let idx = -1;
+          if (post.id) idx = arr.findIndex(p => p.id === post.id);
+          if (idx === -1) {
+            // try matching by unique combination
+            idx = arr.findIndex(p => (p.title === post.title && p.body === post.body && (p.authorFirst||'') === (post.authorFirst||'')));
+          }
+          if (idx >= 0) {
+            arr.splice(idx, 1); localStorage.setItem('campus_posts_v1', JSON.stringify(arr)); cleanupModal(); wrapper.remove(); showTransientMessage('Post deleted (local).');
+          } else {
+            cleanupModal(); alert('Failed to locate post to delete.');
+          }
+        } catch (err) {
+          console.error('Delete failed:', err); alert('Failed to delete post.'); cleanupModal();
+        }
+      });
+    });
+    menuInner.appendChild(delItem);
+  }
+
+  // toggle menu visibility
+  more.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wasHidden = menu.classList.contains('hidden');
+    // hide other menus
+    document.querySelectorAll('.post-options-menu').forEach(m => m.classList.add('hidden'));
+    if (wasHidden) menu.classList.remove('hidden'); else menu.classList.add('hidden');
+  });
+
+  // close menu when clicking elsewhere
+  document.addEventListener('click', (ev) => {
+    if (!menu.contains(ev.target)) menu.classList.add('hidden');
+  });
+
+  menuWrap.appendChild(more); menuWrap.appendChild(menu);
+  header.appendChild(menuWrap);
+  wrapper.appendChild(header);
+
+  // image
+  if (post.imageUrl) {
+    const imgWrap = document.createElement("div"); imgWrap.className = "mb-4";
+    const img = document.createElement("img");
+    img.src = post.imageUrl; img.alt = post.title || "post image"; img.loading = "lazy";
+    img.className = "w-full h-48 sm:h-60 md:h-72 object-cover rounded-lg border border-gray-100";
+    imgWrap.appendChild(img); wrapper.appendChild(imgWrap);
+  }
+
+  // title & body (preserve paragraphs)
+  if (post.title) {
+    const t = document.createElement("h3"); t.className = "text-lg font-semibold mb-2"; t.textContent = post.title;
+    wrapper.appendChild(t);
+  }
+  // Helper: render body with paragraphs and line breaks preserved
+  function renderBodyWithParagraphs(bodyText) {
+    const container = document.createElement('div');
+    container.className = 'mb-3 text-sm text-gray-800';
+    if (!bodyText) return container;
+    // Normalize CRLF -> LF
+    const normalized = String(bodyText).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    // Split into paragraphs on two-or-more newlines
+    const paragraphs = normalized.split(/\n{2,}/g);
+    paragraphs.forEach((para, idx) => {
+      const pEl = document.createElement('p');
+      pEl.className = 'mb-2';
+      // escape HTML then convert single newlines to <br>
+      const safe = escapeHtml(para).replace(/\n/g, '<br>');
+      pEl.innerHTML = safe;
+      container.appendChild(pEl);
+    });
+    return container;
+  }
+  wrapper.appendChild(renderBodyWithParagraphs(post.body || ''));
+
+  // counts default
+  const likes = post.likeCount || 0;
+  const comments = post.commentCount || 0;
+  const shares = post.shareCount || 0;
+
+  // actions area
+  const actions = document.createElement("div"); actions.className = "flex justify-between text-sm text-gray-500 border-t border-b border-gray-200 py-2 mb-4";
+  // like button:
+  const likeBtn = document.createElement("button");
+  likeBtn.className = "flex items-center hover like-btn";
+  likeBtn.innerHTML = `<i class="far fa-thumbs-up mr-1"></i> <span class="like-label">Like</span> <span class="like-count ml-2">${likes}</span>`;
+  actions.appendChild(likeBtn);
+
+  // comment button
+  const commentBtn = document.createElement("button");
+  commentBtn.className = "flex items-center hover comment-btn";
+  commentBtn.innerHTML = `<i class="far fa-comment mr-1"></i> Comment <span class="comment-count ml-2">${comments}</span>`;
+  actions.appendChild(commentBtn);
+
+  // share button
+  const shareBtn = document.createElement("button");
+  shareBtn.className = "flex items-center hover share-btn";
+  shareBtn.innerHTML = `<i class="fas fa-share mr-1"></i> Share <span class="share-count ml-2">${shares}</span>`;
+  actions.appendChild(shareBtn);
+
+  wrapper.appendChild(actions);
+
+  // comment input area initially hidden (will open on comment click)
+  const commentArea = document.createElement("div"); commentArea.className = "comment-area hidden";
+  commentArea.innerHTML = `
+    <div class="flex items-center space-x-3 mb-2">
+      <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center"><i class="fas fa-user text-xs"></i></div>
+      <input type="text" class="comment-input w-full rounded-full px-4 py-2 text-sm border-gray-200 bg-gray-50" placeholder="Write a comment..." />
+    </div>
+    <div class="comment-list space-y-2"></div>
+  `;
+  wrapper.appendChild(commentArea);
+
+  // Wire actions:
+  likeBtn.addEventListener("click", async () => {
+    if (!USE_FIREBASE || !auth || !auth.currentUser) {
+      alert("Please sign in to like posts.");
+      return;
+    }
+    const uid = auth.currentUser.uid;
+    const likeDocRef = db.collection(POSTS_COLLECTION).doc(post.id).collection("likes").doc(uid);
+    const postRef = db.collection(POSTS_COLLECTION).doc(post.id);
+    try {
+      const doc = await likeDocRef.get();
+      if (doc.exists) {
+        // unlike
+        await likeDocRef.delete();
+        await postRef.update({ likeCount: firebase.firestore.FieldValue.increment(-1) });
+      } else {
+        // like
+        await likeDocRef.set({ uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await postRef.update({ likeCount: firebase.firestore.FieldValue.increment(1) });
+      }
+    } catch (err) {
+      console.error("Like error:", err);
+    }
+  });
+
+  commentBtn.addEventListener("click", async () => {
+    // toggle comment area
+    commentArea.classList.toggle("hidden");
+    if (!commentArea.classList.contains("hidden")) {
+      // load comments
+      await loadCommentsInto(post.id, commentArea.querySelector(".comment-list"));
+      const input = commentArea.querySelector(".comment-input");
+      input.focus();
+      input.addEventListener("keydown", async (e) => {
+        if (e.key === "Enter") {
+          const text = input.value.trim();
+          if (!text) return;
+          if (!USE_FIREBASE || !auth || !auth.currentUser) { alert("Please sign in to comment."); return; }
+          try {
+            const postRef = db.collection(POSTS_COLLECTION).doc(post.id);
+            const commentRef = postRef.collection("comments").doc();
+            await commentRef.set({
+              uid: auth.currentUser.uid,
+              text,
+              authorName: auth.currentUser.displayName || auth.currentUser.email || null,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            await postRef.update({ commentCount: firebase.firestore.FieldValue.increment(1) });
+            input.value = "";
+            await loadCommentsInto(post.id, commentArea.querySelector(".comment-list"));
+            // update counts in UI quickly
+            const cc = wrapper.querySelector(".comment-count");
+            if (cc) cc.textContent = (parseInt(cc.textContent || "0", 10) + 1).toString();
+          } catch (err) {
+            console.error("Comment save error:", err);
+            alert("Failed to save comment.");
+          }
+        }
+      }, { once: false });
+    }
+  });
+
+  shareBtn.addEventListener("click", async () => {
+    // attempt native share
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: post.title || "Post", text: post.body || "", url: window.location.href + `#post-${post.id}` });
+      } else {
+        // fallback: copy link
+        const link = window.location.href + `#post-${post.id}`;
+        await navigator.clipboard.writeText(link);
+        alert("Link copied to clipboard.");
+      }
+      // increment shareCount
+      if (USE_FIREBASE && db) {
+        await db.collection(POSTS_COLLECTION).doc(post.id).update({ shareCount: firebase.firestore.FieldValue.increment(1) });
+        const sc = wrapper.querySelector(".share-count");
+        if (sc) sc.textContent = (parseInt(sc.textContent || "0", 10) + 1).toString();
+      }
+    } catch (err) {
+      console.warn("Share failed:", err);
+    }
+  });
+
+  // Real-time update for counts & whether current user liked (optional)
+  if (USE_FIREBASE && db) {
+    // Listen to post doc changes to update counts
+    const unsub = db.collection(POSTS_COLLECTION).doc(post.id).onSnapshot(doc => {
+      const data = doc.data();
+      if (!data) return;
+      wrapper.querySelector(".like-count").textContent = data.likeCount || 0;
+      wrapper.querySelector(".comment-count").textContent = data.commentCount || 0;
+      wrapper.querySelector(".share-count").textContent = data.shareCount || 0;
+    });
+    // mark liked state for current user
+    const markLikeState = async () => {
+      if (!auth || !auth.currentUser) {
+        likeBtn.classList.remove("text-blue-600");
+        likeBtn.querySelector(".like-label").textContent = "Like";
+        return;
+      }
+      try {
+        const doc = await db.collection(POSTS_COLLECTION).doc(post.id).collection("likes").doc(auth.currentUser.uid).get();
+        if (doc.exists) {
+          likeBtn.classList.add("text-blue-600");
+          likeBtn.querySelector(".like-label").textContent = "Liked";
+        } else {
+          likeBtn.classList.remove("text-blue-600");
+          likeBtn.querySelector(".like-label").textContent = "Like";
+        }
+      } catch (err) {
+        console.warn("Failed to determine like state:", err);
+      }
+    };
+    // run initially and on auth change
+    markLikeState();
+    auth && auth.onAuthStateChanged(() => markLikeState());
+    // cleanup could be added if we detach posts
+  }
+
+  return wrapper;
+}
+
+/* ------------ load comments into container -------------- */
+async function loadCommentsInto(postId, container) {
+  container.innerHTML = "";
+  if (!USE_FIREBASE || !db) {
+    const arr = JSON.parse(localStorage.getItem("campus_comments_" + postId) || "[]");
+    arr.forEach(c => {
+      const el = document.createElement("div");
+      el.className = "text-sm bg-gray-50 p-2 rounded";
+      const commentBody = document.createElement('div');
+      commentBody.innerHTML = escapeHtml(c.text).replace(/\n/g, '<br>');
+      el.appendChild(document.createElement('strong')).textContent = c.authorName || "User";
+      el.appendChild(commentBody);
+      container.appendChild(el);
+    });
+    return;
+  }
+  const q = await db.collection(POSTS_COLLECTION).doc(postId).collection("comments").orderBy("createdAt", "asc").limit(100).get();
+  q.forEach(doc => {
+    const d = doc.data();
+    const el = document.createElement("div");
+    el.className = "text-sm bg-gray-50 p-2 rounded";
+    const commentBody = document.createElement('div');
+    commentBody.innerHTML = escapeHtml(d.text).replace(/\n/g, '<br>');
+    el.appendChild(document.createElement('strong')).textContent = d.authorName || "User";
+    el.appendChild(commentBody);
+    container.appendChild(el);
+  });
+}
+
+/* ---------------- render feed (realtime listener) ---------------- */
+async function loadPostsRealtime() {
+  postsContainer.innerHTML = "";
+  if (!USE_FIREBASE || !db) {
+    // local demo posts fallback
+    const arr = JSON.parse(localStorage.getItem("campus_posts_v1") || "[]");
+    arr.reverse().forEach(p => postsContainer.appendChild(renderPost(p)));
+    return;
+  }
+  try {
+    db.collection(POSTS_COLLECTION).orderBy("createdAt", "desc").limit(POSTS_PAGE_LIMIT)
+      .onSnapshot(snapshot => {
+        postsContainer.innerHTML = "";
+        snapshot.forEach(doc => {
+          const data = { id: doc.id, ...doc.data() };
+          postsContainer.appendChild(renderPost(data));
+        });
+      });
+  } catch (err) {
+    console.error("Realtime feed error:", err);
+  }
+}
+loadPostsRealtime();
+
+/* ------------- composer submit (create post) -------------- */
+const composerSubmitBtn = composer.el.querySelector("#composer-submit");
+composerSubmitBtn.addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  const title = composer.el.querySelector("#composer-title").value.trim();
+  const body = composer.el.querySelector("#composer-body").value.trim();
+  const file = composer.el.querySelector("#composer-image").files[0];
+  if (!body && !file && !title) { alert("Write something or attach an image before posting."); return; }
+
+  // determine author info
+  let authorFirst = null, authorLast = null, authorImageUrl = null, authorId = null, authorState = null, authorAssociation = null, authorYear = null;
+  if (USE_FIREBASE && auth && auth.currentUser) {
+    authorId = auth.currentUser.uid;
+    // try to pull user doc
+    try {
+      const udoc = await db.collection("users").doc(authorId).get();
+      if (udoc.exists) {
+        const ud = udoc.data();
+        authorFirst = ud.firstName || ud.first || null;
+        authorLast = ud.lastName || ud.last || null;
+        authorImageUrl = ud.imageUrl || ud.photoURL || null;
+        authorState = ud.stateName || ud.state || null;
+        authorAssociation = ud.association || null;
+        authorYear = ud.yearHeld || ud.year || null;
+      } else {
+        // fallback to auth profile fields
+        authorFirst = auth.currentUser.displayName || auth.currentUser.email;
+      }
+    } catch (err) {
+      console.warn("Failed to read user document:", err);
+    }
+  } else {
+    // no firebase — read profile card present name
+    const nameEl = document.querySelector(".card .font-bold");
+    if (nameEl) {
+      const parts = nameEl.textContent.trim().split(" ");
+      authorFirst = parts[0]; authorLast = parts.slice(1).join(" ");
+    } else {
+      authorFirst = "Guest";
+    }
+  }
+
+  showSmallOverlay("Posting...");
+
+  // upload image if present
+  let imageUrl = null;
+  if (file) {
+    try {
+      if (UPLOADCARE_PUBLIC_KEY) {
+        const uploaded = await uploadToUploadcare(file);
+        console.log('uploadToUploadcare returned:', uploaded);
+        if (typeof uploaded === 'string' && uploaded.trim()) {
+          imageUrl = uploaded;
+        }
+        if (!imageUrl) console.warn('Uploadcare upload returned no usable URL', uploaded);
+      } else {
+        console.warn("Uploadcare not configured; skipping image upload.");
+      }
+    } catch (err) {
+      console.warn("Image upload failed:", err);
+    }
+  }
+
+  const newPost = {
+    title: title || null,
+    body: body || null,
+    imageUrl: imageUrl || null,
+    authorId: authorId || null,
+    authorFirst: authorFirst || null,
+    authorLast: authorLast || null,
+    authorImageUrl: authorImageUrl || null,
+    authorState: authorState || null,
+    authorAssociation: authorAssociation || null,
+    authorYear: authorYear || null,
+    likeCount: 0,
+    commentCount: 0,
+    shareCount: 0,
+    createdAt: USE_FIREBASE ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
+  };
+
+  try {
+    if (USE_FIREBASE && db) {
+      await db.collection(POSTS_COLLECTION).add(newPost);
+      composer.el.querySelector("#composer-title").value = "";
+      composer.el.querySelector("#composer-body").value = "";
+      composer.el.querySelector("#composer-image").value = "";
+      composer.el.querySelector("#composer-image-name").textContent = "";
+      composer.hide && composer.hide();
+      hideSmallOverlay();
+      showTransientMessage("Post published.");
+      return;
+    }
+    // non-firebase fallback: localStorage
+    const arr = JSON.parse(localStorage.getItem("campus_posts_v1") || "[]");
+    newPost.createdAt = new Date().toISOString();
+    arr.push(newPost);
+    localStorage.setItem("campus_posts_v1", JSON.stringify(arr));
+    composer.el.querySelector("#composer-title").value = "";
+    composer.el.querySelector("#composer-body").value = "";
+    composer.el.querySelector("#composer-image").value = "";
+    composer.el.querySelector("#composer-image-name").textContent = "";
+    composer.hide && composer.hide();
+    hideSmallOverlay();
+    showTransientMessage("Post published (local demo).");
+    loadPostsRealtime();
+  } catch (err) {
+    hideSmallOverlay(); console.error("Failed to save post:", err); alert("Failed to publish post.");
+  }
+});
+
+/* ---------------- auth state handling: populate UI profile card & nav avatar ---------------- */
+async function populateProfileUI(user) {
+  // profile card assumed to be the left-most first .card in the left column
+  const leftCard = document.querySelector("section#dashboard .lg\\:col-span-1 .card") || document.querySelector(".card");
+  if (!leftCard) return;
+  // find elements inside leftCard to update: avatar div, name h3.font-bold, role p, and the info area
+  const avatarEl = leftCard.querySelector(".h-20.w-20.rounded-full") || leftCard.querySelector(".h-10.w-10.rounded-full");
+  const nameEl = leftCard.querySelector("h3.font-bold");
+  const roleEl = leftCard.querySelector("p.text-sm");
+  const infoRow = leftCard.querySelector("div.w-full.border-t");
+
+  if (!user) {
+    // show placeholder
+    if (avatarEl) avatarEl.innerHTML = `<i class="fas fa-user text-2xl"></i>`;
+    if (nameEl) nameEl.textContent = "Guest";
+    if (roleEl) roleEl.textContent = "";
+    if (infoRow) infoRow.innerHTML = '';
+    // nav avatar
+    const navAvatar = document.querySelector("#user-menu-button .h-8.w-8.rounded-full");
+    if (navAvatar) navAvatar.innerHTML = `<i class="fas fa-user"></i>`;
+    return;
+  }
+  // fetch user doc if available
+  let userDoc = null;
+  try {
+    const doc = await db.collection("users").doc(user.uid).get();
+    if (doc.exists) userDoc = doc.data();
+  } catch (err) {
+    console.warn("Error fetching user doc:", err);
+  }
+  const first = (userDoc && (userDoc.firstName || userDoc.first)) || user.displayName || null;
+  const last = (userDoc && (userDoc.lastName || userDoc.last)) || null;
+  const full = [first, last].filter(Boolean).join(" ") || user.email || "Member";
+  const role = (userDoc && userDoc.position) || ""; // keep existing UI structure
+  const schoolLine = (userDoc && (userDoc.schoolName || userDoc.school)) ? `${userDoc.schoolName || userDoc.school} ${userDoc.yearHeld ? userDoc.yearHeld : ''}` : '';
+  const state = (userDoc && (userDoc.stateName || userDoc.state)) || '';
+  const assoc = (userDoc && userDoc.association) || '';
+
+  // update left card
+  if (avatarEl) {
+    const pic = (userDoc && userDoc.imageUrl) || user.photoURL || null;
+    if (pic) avatarEl.innerHTML = `<img src="${normalizeImageUrl(pic)}" alt="avatar" class="h-20 w-20 rounded-full object-cover">`;
+    else avatarEl.innerHTML = `<i class="fas fa-user text-2xl"></i>`;
+  }
+  if (nameEl) nameEl.textContent = full;
+  if (roleEl) roleEl.textContent = role || (userDoc && userDoc.position) || "";
+  if (infoRow) {
+    infoRow.innerHTML = `
+      <div class="flex justify-between text-sm mb-2">
+        <span class="text-gray-500">${escapeHtml(userDoc?.schoolName || userDoc?.school || '')} ${escapeHtml(userDoc?.yearHeld || '')}</span>
+        <span class="font-medium"></span>
+      </div>
+      <div class="text-xs text-gray-500">State: ${escapeHtml(state)} • Assoc: ${escapeHtml(assoc)}</div>
+    `;
+  }
+  // nav avatar
+  const navAvatarWrap = document.querySelector("#user-menu-button > div");
+  if (navAvatarWrap) {
+    const pic = (userDoc && userDoc.imageUrl) || user.photoURL || null;
+    if (pic) navAvatarWrap.innerHTML = `<img src="${normalizeImageUrl(pic)}" alt="avatar" class="h-8 w-8 rounded-full object-cover">`;
+    else navAvatarWrap.innerHTML = `<i class="fas fa-user"></i>`;
+  }
+}
+
+/* --------------- listen for auth changes --------------- */
+if (USE_FIREBASE && auth) {
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      await populateProfileUI(user);
+      // optionally reload posts to show any auth-dependent state (likes)
+      loadPostsRealtime();
+    } else {
+      await populateProfileUI(null);
+      loadPostsRealtime();
+    }
+  });
+} else {
+  // no firebase: attempt to populate from DOM local placeholders
+  populateProfileUI(null);
+}
+
+/* ---------------- search implementation (client-side fetch & filter) ---------------- */
+async function doSearch(q) {
+  if (!q) return;
+  searchModal.results.innerHTML = `<div class="text-sm text-gray-500">Searching...</div>`;
+  searchModal.show();
+  const term = q.toLowerCase();
+
+  const matches = { users: [], posts: [] };
+
+  if (USE_FIREBASE && db) {
+    try {
+      // fetch recent posts & users and filter locally
+      const [postsSnap, usersSnap] = await Promise.all([
+        db.collection(POSTS_COLLECTION).orderBy("createdAt", "desc").limit(200).get(),
+        db.collection("users").orderBy("createdAt", "desc").limit(200).get()
+      ]);
+      postsSnap.forEach(d => {
+        const p = d.data();
+        const hay = `${p.title || ""} ${p.body || ""} ${p.authorFirst || ""} ${p.authorLast || ""}`.toLowerCase();
+        if (hay.includes(term)) matches.posts.push({ id: d.id, ...p });
+      });
+      usersSnap.forEach(d => {
+        const u = d.data();
+        const hay = `${u.firstName || ""} ${u.lastName || ""} ${u.username || ""} ${u.schoolName || ""} ${u.association || ""}`.toLowerCase();
+        if (hay.includes(term)) matches.users.push({ id: d.id, ...u });
+      });
+    } catch (err) {
+      console.warn("Search query failed:", err);
+    }
+  } else {
+    // local fallback
+    const posts = JSON.parse(localStorage.getItem("campus_posts_v1") || "[]");
+    const users = []; // nothing local
+    posts.forEach(p => {
+      const hay = `${p.title || ""} ${p.body || ""} ${p.authorName || ""}`.toLowerCase();
+      if (hay.includes(term)) matches.posts.push(p);
+    });
+  }
+
+  // render results
+  const r = searchModal.results;
+  r.innerHTML = "";
+  if (matches.users.length === 0 && matches.posts.length === 0) {
+    r.innerHTML = `<div class="text-sm text-gray-500">No results for "${escapeHtml(q)}"</div>`;
+    return;
+  }
+  if (matches.users.length) {
+    const h = document.createElement("div"); h.className = "mb-2"; h.innerHTML = `<h4 class="font-semibold">Users</h4>`;
+    r.appendChild(h);
+    matches.users.forEach(u => {
+      const el = document.createElement("a");
+      el.href = "#";
+      el.className = "flex items-center gap-3 p-2 rounded hover:bg-gray-50";
+      el.innerHTML = `<div class="h-10 w-10 rounded-full bg-gray-200 overflow-hidden">${u.imageUrl ? `<img src="${normalizeImageUrl(u.imageUrl)}" class="h-full w-full object-cover">` : `<i class="fas fa-user"></i>`}</div>
+        <div><div class="font-medium">${escapeHtml((u.firstName || "") + " " + (u.lastName || ""))}</div><div class="text-xs text-gray-500">${escapeHtml(u.schoolName || "")} • ${escapeHtml(u.association || "")}</div></div>`;
+        el.addEventListener("click", (ev) => { ev.preventDefault(); openProfile(u.id); searchModal.hide(); });
+        // expand user details inline: include position, state, year and bio if present
+        const details = document.createElement('div');
+        details.className = 'text-xs text-gray-600 mt-1';
+        const parts = [];
+        if (u.position) parts.push(escapeHtml(u.position));
+        if (u.stateName || u.state) parts.push(escapeHtml(u.stateName || u.state || ''));
+        if (u.yearHeld || u.year) parts.push(escapeHtml(u.yearHeld || u.year || ''));
+        if (u.username) parts.push('@' + escapeHtml(u.username));
+        if (parts.length) details.innerHTML = parts.join(' • ');
+        if (u.bio) {
+          const bioEl = document.createElement('div'); bioEl.className = 'mt-1 text-sm text-gray-700'; bioEl.innerHTML = escapeHtml(u.bio).replace(/\n/g, '<br>');
+          details.appendChild(bioEl);
+        }
+        el.appendChild(details);
+        r.appendChild(el);
+    });
+  }
+  if (matches.posts.length) {
+    const h = document.createElement("div"); h.className = "mt-3 mb-2"; h.innerHTML = `<h4 class="font-semibold">Posts</h4>`;
+    r.appendChild(h);
+    // Render up to 10 matched posts using the existing renderPost() so paragraphs and images are preserved.
+    matches.posts.slice(0, 10).forEach(p => {
+      const postNode = renderPost({ id: p.id, ...p });
+      // make the card clickable to open the full post modal
+      postNode.style.cursor = 'pointer';
+      postNode.addEventListener('click', (ev) => {
+        // if click originated from an interactive control, ignore so buttons/links still work
+        if (ev.target.closest('button, a, input, textarea, select')) return;
+        ev.preventDefault();
+        if (p.id) {
+          openPostInModal(p.id);
+        } else {
+          // local post (no id) — open a modal showing the rendered post node
+          const modal = document.createElement('div');
+          modal.style.position = 'fixed'; modal.style.left = 0; modal.style.top = 0; modal.style.width = '100%'; modal.style.height = '100%';
+          modal.style.zIndex = 99999; modal.style.display = 'flex'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center';
+          modal.style.backdropFilter = 'blur(4px)';
+          const wrapper = document.createElement('div'); wrapper.className = 'bg-white rounded-lg w-full max-w-3xl p-4';
+          const close = document.createElement('button'); close.className = 'px-3 py-1 rounded bghover'; close.textContent = 'Close';
+          close.addEventListener('click', () => modal.remove());
+          wrapper.appendChild(close);
+          const cloned = postNode.cloneNode(true);
+          // remove any ids that might conflict and show as static
+          wrapper.appendChild(cloned);
+          modal.appendChild(wrapper);
+          document.body.appendChild(modal);
+        }
+        searchModal.hide();
+      });
+      r.appendChild(postNode);
+    });
+  }
+}
+
+/* ---------------- open profile helper (navigates / modal) ---------------- */
+async function openProfile(userId) {
+  // for now, open a simple modal with user's info and posts
+  try {
+    // fetch user document (supports both Firebase and local fallback)
+    let u = null;
+    if (USE_FIREBASE && db) {
+      const doc = await db.collection("users").doc(userId).get();
+      if (!doc.exists) return alert("Profile not found.");
+      u = doc.data();
+    } else {
+      // local fallback: try to read from DOM or a localStore map if available
+      // best-effort: look for a stored users list in localStorage
+      const users = JSON.parse(localStorage.getItem('campus_users_v1') || '[]');
+      u = users.find(x => x.id === userId) || users.find(x => x.uid === userId) || null;
+      if (!u) {
+        // last resort: show minimal profile
+        u = { firstName: 'Member', lastName: '', imageUrl: null, schoolName: '', association: '' };
+      }
+    }
+
+    const modal = document.createElement('div');
+    modal.style.position = 'fixed'; modal.style.left = 0; modal.style.top = 0; modal.style.width = '100%'; modal.style.height = '100%';
+    modal.style.zIndex = 99999; modal.style.display = 'flex'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center';
+    modal.style.backdropFilter = 'blur(4px)';
+
+    // Build modal content with big avatar and compact recent-posts list
+    const container = document.createElement('div');
+    container.className = 'bg-white rounded-lg w-full max-w-3xl p-4';
+
+    const headerRow = document.createElement('div');
+    headerRow.className = 'flex items-center justify-between mb-4';
+
+    const left = document.createElement('div');
+    left.className = 'flex items-center gap-4';
+    const avatarWrap = document.createElement('div');
+    avatarWrap.className = 'h-28 w-28 rounded-full overflow-hidden flex items-center justify-center bg-gray-100';
+    if (u.imageUrl) {
+      const img = document.createElement('img'); img.src = normalizeImageUrl(u.imageUrl); img.className = 'h-full w-full object-cover'; img.alt = (u.firstName || '') + ' ' + (u.lastName || '');
+      avatarWrap.appendChild(img);
+    } else {
+      avatarWrap.innerHTML = '<i class="fas fa-user text-3xl text-gray-400"></i>';
+    }
+    left.appendChild(avatarWrap);
+
+    const meta = document.createElement('div');
+    meta.innerHTML = `<div class="font-bold text-lg">${escapeHtml((u.firstName||'') + ' ' + (u.lastName||''))}</div>
+      <div class="text-sm text-gray-600">${escapeHtml(u.schoolName || '')} ${escapeHtml(u.yearHeld || u.year || '')}</div>
+      <div class="text-xs text-gray-500 mt-1">${escapeHtml(u.position || '')} ${u.stateName ? '• ' + escapeHtml(u.stateName) : ''} ${u.association ? '• ' + escapeHtml(u.association) : ''}</div>
+      <div class="text-xs text-gray-500 mt-2">${u.email ? `<a href=\"mailto:${escapeHtml(u.email)}\" class=\"text-blue-600\">${escapeHtml(u.email)}</a>` : ''} ${u.phone || u.phoneNumber ? ` • <a href=\"tel:${escapeHtml(u.phone || u.phoneNumber)}\" class=\"text-blue-600\">${escapeHtml(u.phone || u.phoneNumber)}</a>` : ''}</div>`;
+    left.appendChild(meta);
+
+    headerRow.appendChild(left);
+
+    const closeBtn = document.createElement('button'); closeBtn.className = 'px-3 py-1 rounded bghover'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', () => modal.remove());
+    headerRow.appendChild(closeBtn);
+
+    container.appendChild(headerRow);
+
+    // optional bio
+    if (u.bio) {
+      const bio = document.createElement('div'); bio.className = 'mb-3 text-sm text-gray-700'; bio.innerHTML = escapeHtml(u.bio).replace(/\n/g, '<br>');
+      container.appendChild(bio);
+    }
+
+    // Section title for recent posts
+    const postsTitle = document.createElement('div'); postsTitle.className = 'font-semibold mb-2'; postsTitle.textContent = 'Recent posts';
+    container.appendChild(postsTitle);
+
+    const postsList = document.createElement('div'); postsList.id = 'profile-posts'; postsList.className = 'space-y-2';
+    container.appendChild(postsList);
+
+    modal.appendChild(container);
+    document.body.appendChild(modal);
+
+    // Helper to create a compact post preview element
+    function createPostPreview(post) {
+      const el = document.createElement('a'); el.href = '#'; el.className = 'flex items-center gap-3 p-2 rounded hover:bg-gray-50';
+      // thumbnail
+      const thumb = document.createElement('div'); thumb.className = 'w-20 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0';
+      if (post.imageUrl) {
+        const im = document.createElement('img'); im.src = normalizeImageUrl(post.imageUrl); im.className = 'w-full h-full object-cover'; im.alt = post.title || '';
+        thumb.appendChild(im);
+      } else {
+        thumb.innerHTML = '<div class="w-full h-full flex items-center justify-center text-xs text-gray-500">No image</div>';
+      }
+      el.appendChild(thumb);
+      // text
+      const info = document.createElement('div'); info.className = 'flex-1';
+      const title = document.createElement('div'); title.className = 'font-medium text-sm'; title.textContent = post.title || (post.body || '').slice(0, 80);
+      const meta = document.createElement('div'); meta.className = 'text-xs text-gray-500';
+      const created = post.createdAt && post.createdAt.toDate ? post.createdAt.toDate() : (post.createdAt ? new Date(post.createdAt) : new Date());
+      meta.textContent = `${escapeHtml((post.authorFirst||'') + ' ' + (post.authorLast||''))} • ${escapeHtml(timeSince(created))}`;
+      info.appendChild(title); info.appendChild(meta);
+      el.appendChild(info);
+
+      el.addEventListener('click', (ev) => { ev.preventDefault(); if (post.id) openPostInModal(post.id); else openPostInModal(post.id || post._localId || null); modal.remove(); });
+      return el;
+    }
+
+    // fetch posts by this user
+    let posts = [];
+    if (USE_FIREBASE && db) {
+      try {
+        const postsSnap = await db.collection(POSTS_COLLECTION).where('authorId', '==', userId).orderBy('createdAt', 'desc').limit(20).get();
+        posts = postsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (err) {
+        console.warn('Failed to load profile posts:', err);
+      }
+    } else {
+      // local fallback: read campus_posts_v1
+      const arr = JSON.parse(localStorage.getItem('campus_posts_v1') || '[]');
+      posts = arr.filter(p => p.authorId === userId || p.authorFirst === (u.firstName) || p.authorLast === (u.lastName)).slice().reverse();
+    }
+
+    if (!posts || posts.length === 0) {
+      postsList.innerHTML = '<div class="text-sm text-gray-500">No recent posts.</div>';
+    } else {
+      posts.slice(0, 6).forEach(p => postsList.appendChild(createPostPreview(p)));
+    }
+  } catch (err) {
+    console.error("Open profile error:", err);
+  }
+}
+
+/* ---------------- open single post in modal --------------- */
+async function openPostInModal(postId) {
+  try {
+    let doc = null;
+    let p = null;
+    if (USE_FIREBASE && db) {
+      doc = await db.collection(POSTS_COLLECTION).doc(postId).get();
+      if (!doc.exists) return alert("Post not found.");
+      p = doc.data();
+    } else {
+      // local fallback: try to find post in localStorage
+      const posts = JSON.parse(localStorage.getItem("campus_posts_v1") || "[]");
+      p = posts.find(x => (x.id === postId) || false) || null;
+      if (!p) {
+        // maybe postId is numeric index or missing id; show generic not found
+        return alert("Post not found (offline).");
+      }
+      // wrap to mimic Firestore doc id
+      doc = { id: postId };
+    }
+    const modal = document.createElement('div');
+    modal.style.position = 'fixed'; modal.style.left = 0; modal.style.top = 0; modal.style.width = '100%'; modal.style.height = '100%';
+    modal.style.zIndex = 99999; modal.style.display = 'flex'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center';
+    modal.style.backdropFilter = 'blur(4px)';
+
+    // Build a two-column modal: main post on left, recent posts by same author on right
+    const modalCard = document.createElement('div'); modalCard.className = 'bg-white rounded-lg w-full max-w-5xl p-4';
+    modalCard.style.maxHeight = '90vh'; modalCard.style.overflowY = 'auto';
+
+    const topRow = document.createElement('div'); topRow.className = 'flex justify-between items-center mb-3';
+    const titleEl = document.createElement('h3'); titleEl.className = 'font-bold'; titleEl.textContent = p.title || 'Post';
+    const closeBtn = document.createElement('button'); closeBtn.className = 'px-3 py-1 rounded bghover'; closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', () => modal.remove());
+    topRow.appendChild(titleEl); topRow.appendChild(closeBtn);
+    modalCard.appendChild(topRow);
+
+    const contentRow = document.createElement('div'); contentRow.className = 'flex gap-4';
+    // left: full post
+    const leftCol = document.createElement('div'); leftCol.className = 'flex-1';
+    leftCol.innerHTML = renderPost({ id: doc.id, ...p }).outerHTML;
+    contentRow.appendChild(leftCol);
+
+    // right: recent posts by same author
+    const rightCol = document.createElement('div'); rightCol.style.width = '320px'; rightCol.className = 'hidden lg:block';
+    rightCol.innerHTML = `<div class="font-semibold mb-2">More from this author</div><div id="post-author-list" class="space-y-2"></div>`;
+    contentRow.appendChild(rightCol);
+
+    modalCard.appendChild(contentRow);
+    modal.appendChild(modalCard);
+    document.body.appendChild(modal);
+
+    // fetch recent posts by same author and populate right column (Firestore or local fallback)
+    (async function populateAuthorSideList() {
+      const listEl = modalCard.querySelector('#post-author-list');
+      listEl.innerHTML = '<div class="text-sm text-gray-500">Loading...</div>';
+      try {
+        let otherPosts = [];
+        if (USE_FIREBASE && db) {
+          if (p.authorId) {
+            const snap = await db.collection(POSTS_COLLECTION).where('authorId', '==', p.authorId).orderBy('createdAt', 'desc').limit(10).get();
+            otherPosts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          }
+        } else {
+          const arr = JSON.parse(localStorage.getItem('campus_posts_v1') || '[]');
+          otherPosts = arr.filter(x => x.authorId === p.authorId || ((x.authorFirst || '') === (p.authorFirst || '') && (x.authorLast || '') === (p.authorLast || ''))).slice().reverse().slice(0,10);
+        }
+        listEl.innerHTML = '';
+        if (!otherPosts || otherPosts.length === 0) listEl.innerHTML = '<div class="text-sm text-gray-500">No other posts.</div>';
+        else {
+          otherPosts.forEach(op => {
+            const preview = document.createElement('div'); preview.className = 'p-2 rounded hover:bg-gray-50';
+            preview.innerHTML = `<div class="font-medium text-sm">${escapeHtml(op.title || (op.body||'').slice(0,80))}</div><div class="text-xs text-gray-500">${escapeHtml(timeSince(op.createdAt && op.createdAt.toDate ? op.createdAt.toDate() : new Date(op.createdAt)))}</div>`;
+            preview.addEventListener('click', (ev) => { ev.preventDefault(); modal.remove(); openPostInModal(op.id); });
+            listEl.appendChild(preview);
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to load author posts for sidebar:', err);
+        listEl.innerHTML = '<div class="text-sm text-gray-500">Failed to load.</div>';
+      }
+    })();
+  } catch (err) { console.error("Open post modal error:", err); }
+}
+
+/* ---------------- helpers: small overlay & transient message ---------------- */
+function showSmallOverlay(msg = "Working...") {
+  let o = document.getElementById("small-overlay");
+  if (!o) {
+    o = document.createElement("div"); o.id = "small-overlay";
+    o.style.position = "fixed"; o.style.right = "20px"; o.style.bottom = "20px"; o.style.zIndex = 99999;
+    o.style.background = "rgba(0,0,0,0.8)"; o.style.color = "white"; o.style.padding = "10px 14px"; o.style.borderRadius = "8px";
+    document.body.appendChild(o);
+  }
+  o.textContent = msg; o.style.display = "block";
+}
+function hideSmallOverlay() { const o = document.getElementById("small-overlay"); if (o) o.style.display = "none"; }
+function showTransientMessage(msg) {
+  const el = document.createElement("div"); el.textContent = msg;
+  el.style.position = "fixed"; el.style.right = "20px"; el.style.bottom = "20px";
+  el.style.padding = "10px 14px"; el.style.background = "#111827"; el.style.color = "white"; el.style.borderRadius = "8px"; el.style.zIndex = 99999;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 2600);
+}
+
+/* ----------------- utility: escapeHtml & timeSince ----------------- */
+function escapeHtml(s) { if (!s) return ""; return s.replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" })[m]); }
+function timeSince(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+  let interval = Math.floor(seconds / 31536000);
+  if (interval >= 1) return interval + "y ago";
+  interval = Math.floor(seconds / 2592000);
+  if (interval >= 1) return interval + "mo ago";
+  interval = Math.floor(seconds / 86400);
+  if (interval >= 1) return interval + "d ago";
+  interval = Math.floor(seconds / 3600);
+  if (interval >= 1) return interval + "h ago";
+  interval = Math.floor(seconds / 60);
+  if (interval >= 1) return interval + "m ago";
+  return "just now";
+}
+
+/* ---------------- expose manual reload helper ---------------- */
+window.CampusLeaders = window.CampusLeaders || {};
+window.CampusLeaders.reloadPosts = loadPostsRealtime;
