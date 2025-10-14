@@ -19,7 +19,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16 items-center">
         <div class="flex items-center space-x-6">
-          <a href="index.html" class="flex items-center gap-3">
+          <a href="dashboard.html" class="flex items-center gap-3">
             <img src="logo.png" alt="Campus Leaders logo" class="h-20 w-auto" />
           </a>
           <div class="hidden md:flex md:space-x-6">
@@ -53,8 +53,8 @@
             </button>
 
             <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200" role="menu" aria-hidden="true">
-              <a href="profile.html" class="block px-4 py-2 bghover" role="menuitem">Profile</a>
-              <a id="sign-out" href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
+          
+              <a id="desktop-sign-out" href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
             </div>
           </div>
         </div>
@@ -407,8 +407,52 @@
         });
       })();
     });
+
+      // wire desktop sign out link (if present)
+  try{
+    const ds = document.getElementById('desktop-sign-out');
+    if(ds){ ds.addEventListener('click', (ev)=>{ ev.preventDefault(); if(window.CampusLeaders && typeof window.CampusLeaders.signOutNow==='function') return window.CampusLeaders.signOutNow(); if(window.firebase && firebase.auth){ try{ firebase.auth().signOut().then(()=> location.href='/index.html').catch(()=> location.href='/index.html'); return; }catch(e){} } localStorage.removeItem('auth_token'); location.href='/index.html'; }); }
+  }catch(e){ /* ignore */ }
   </script>
 
+  <script>
+    // Ensure user menu toggles open when the avatar/button is clicked and closes on outside click
+    (function(){
+      const btn = document.getElementById('user-menu-button');
+      const menu = document.getElementById('user-menu');
+      if(!btn || !menu) return;
+      // Remove any previous identical handlers to avoid duplicate toggles
+      try{ btn.replaceWith(btn.cloneNode(true)); }catch(e){ /* ignore */ }
+      const newBtn = document.getElementById('user-menu-button');
+      newBtn.addEventListener('click', (e)=>{
+        try{ e.preventDefault(); e.stopPropagation(); }catch(_){ }
+        const isHidden = menu.classList.contains('hidden');
+        if(isHidden){
+          menu.classList.remove('hidden');
+          newBtn.setAttribute('aria-expanded','true');
+          // move focus to first menu item for a11y
+          const first = menu.querySelector('a, button'); if(first && typeof first.focus === 'function') first.focus();
+        } else {
+          menu.classList.add('hidden');
+          newBtn.setAttribute('aria-expanded','false');
+        }
+      });
+      // close on outside click
+      document.addEventListener('click', (ev)=>{
+        const b = document.getElementById('user-menu-button');
+        const m = document.getElementById('user-menu');
+        if(!m || !b) return;
+        if(!m.contains(ev.target) && !b.contains(ev.target)){
+          if(!m.classList.contains('hidden')){
+            m.classList.add('hidden');
+            b.setAttribute('aria-expanded','false');
+          }
+        }
+      });
+      // close on Escape
+      document.addEventListener('keydown', (ev)=>{ if(ev.key === 'Escape'){ const b = document.getElementById('user-menu-button'); const m = document.getElementById('user-menu'); if(m && !m.classList.contains('hidden')){ m.classList.add('hidden'); b && b.setAttribute('aria-expanded','false'); } } });
+    })();
+  </script>
   <script src="profile.js" defer></script>
 </body>
 </html>

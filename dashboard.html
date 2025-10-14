@@ -69,9 +69,8 @@
           </button>
 
           <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200" role="menu" aria-hidden="true">
-            <a href="#" data-section="profile" class="block px-4 py-2 bghover" role="menuitem">Profile</a>
-            <a href="#" data-section="settings" class="block px-4 py-2 bghover" role="menuitem">Settings</a>
-            <a href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
+         
+            <a id="desktop-sign-out" href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
           </div>
         </div>
       </div>
@@ -483,10 +482,46 @@ document.addEventListener('DOMContentLoaded', () => {
       if (userMenu) { userMenu.classList.add('hidden'); userMenuButton && userMenuButton.setAttribute('aria-expanded','false'); }
     }
   });
+  
+  // wire desktop sign out link (if present)
+  try{
+    const ds = document.getElementById('desktop-sign-out');
+    if(ds){ ds.addEventListener('click', (ev)=>{ ev.preventDefault(); if(window.CampusLeaders && typeof window.CampusLeaders.signOutNow==='function') return window.CampusLeaders.signOutNow(); if(window.firebase && firebase.auth){ try{ firebase.auth().signOut().then(()=> location.href='/index.html').catch(()=> location.href='/index.html'); return; }catch(e){} } localStorage.removeItem('auth_token'); location.href='/index.html'; }); }
+  }catch(e){ /* ignore */ }
 });
 </script>
-</body>
-</script>
+
+  <script>
+    // Ensure user menu toggles open when the avatar/button is clicked and closes on outside click
+    (function(){
+      const btn = document.getElementById('user-menu-button');
+      const menu = document.getElementById('user-menu');
+      if(!btn || !menu) return;
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const isHidden = menu.classList.contains('hidden');
+        if(isHidden){
+          menu.classList.remove('hidden');
+          btn.setAttribute('aria-expanded','true');
+        } else {
+          menu.classList.add('hidden');
+          btn.setAttribute('aria-expanded','false');
+        }
+      });
+      // close on outside click
+      document.addEventListener('click', (ev)=>{
+        if(!menu.contains(ev.target) && !btn.contains(ev.target)){
+          if(!menu.classList.contains('hidden')){
+            menu.classList.add('hidden');
+            btn.setAttribute('aria-expanded','false');
+          }
+        }
+      });
+      // close on Escape
+      document.addEventListener('keydown', (ev)=>{ if(ev.key === 'Escape'){ if(!menu.classList.contains('hidden')){ menu.classList.add('hidden'); btn.setAttribute('aria-expanded','false'); } } });
+    })();
+  </script>
+
 <script src="news-loader.js" defer></script>
 </body>
 </html>

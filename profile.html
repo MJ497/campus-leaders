@@ -24,7 +24,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16 items-center">
         <div class="flex items-center space-x-6">
-          <a href="index.html" class="flex items-center gap-3">
+          <a href="dashboard.html" class="flex items-center gap-3">
             <img src="logo.png" alt="Campus Leaders logo" class="h-20 w-auto" />
           </a>
           <div class="hidden md:flex md:space-x-6">
@@ -59,8 +59,8 @@
               <span id="nav-username" class="hidden sm:inline-block ml-2 text-sm font-medium text-gray-700"></span>
 
             <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200" role="menu" aria-hidden="true">
-              <a href="profile.html" class="block px-4 py-2 bghover" role="menuitem">Profile</a>
-              <a id="sign-out" href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
+             
+             <a id="desktop-sign-out" href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
             </div>
           </div>
         </div>
@@ -571,7 +571,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
-
+  // wire desktop sign out link (if present)
+  try{
+    const ds = document.getElementById('desktop-sign-out');
+    if(ds){ ds.addEventListener('click', (ev)=>{ ev.preventDefault(); if(window.CampusLeaders && typeof window.CampusLeaders.signOutNow==='function') return window.CampusLeaders.signOutNow(); if(window.firebase && firebase.auth){ try{ firebase.auth().signOut().then(()=> location.href='/index.html').catch(()=> location.href='/index.html'); return; }catch(e){} } localStorage.removeItem('auth_token'); location.href='/index.html'; }); }
+  }catch(e){ /* ignore */ }
 
 </script>
 
