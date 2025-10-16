@@ -1063,3 +1063,10 @@ window.CampusLeaders.findUsersByAssociation = async function(associationName) {
 };
 // expose admin emails for admin console (lowercase)
 window.CampusLeaders.ADMIN_EMAILS = ADMIN_EMAILS.map(e=>e && e.toLowerCase()).filter(Boolean);
+
+/* Forgot / Reset password helpers for Firebase (compat)
+   - Requires firebase (compat) to be loaded & initialized before this script runs.
+   - If you use your existing sign.js that sets USE_FIREBASE, it will use firebase when available.
+*/
+
+
