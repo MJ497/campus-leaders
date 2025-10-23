@@ -143,7 +143,11 @@ const stateSchools = {
     "Cross River State Institute of Technology And Management, Ugep",
     "Bakor Polytechnic Ogoja",
     "College Of Health Technology",
-    "Cross River State College of Education, Akampka",
+    " ⁠University of Education and Entrepreneurship"
+    ,
+     "College of Nursing and Midwifery Calabar ",
+"⁠College of Nursing and Midwifery Itigidi",
+"⁠College of Nursing and Midwifery Ogoja",
     "Federal College of Education, Obudu"
   ],
   "Delta": [
