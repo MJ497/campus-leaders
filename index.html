@@ -13,66 +13,83 @@
 <body class="bg-white text-gray-900 min-h-screen">
   <!-- Navigation (unchanged) -->
   <nav class="bg-white border-b border-gray-200 fixed w-full z-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between h-16 items-center">
-        <div class="flex items-center space-x-6">
-          <a href="index.html" class="flex items-center gap-3">
-            <img src="logo.png" alt="Campus Leaders logo" class="h-20 w-auto" />
-          </a>
-          <div class="hidden md:flex md:space-x-6">
-            <a href="index.html" data-section="dashboard" class="nav-item px-1 py-2 text-sm active-tab">Home</a>
-            <a href="signup.html" data-section="forum" class="nav-item px-1 py-2 text-sm">Profile</a>
-            <a href="" data-section="courses" class="nav-item px-1 py-2 text-sm">About Us</a>
-            <a href="" data-section="codelab" class="nav-item px-1 py-2 text-sm">Support</a>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-20 items-center">
+      <!-- LEFT: logo + title -->
+      <div class="flex items-center space-x-10"> <!-- increased gap here -->
+        <a href="index.html" class="flex items-center gap-4">
+          <img src="logo.png" alt="Campus Leaders logo" class="h-20 w-auto flex-shrink-0" />
+
+          <!-- title block: two-line title + subtitle -->
+          <div class="leading-tight">
+            <!-- Main title: "Campus Leaders" and "Archive" on its own line -->
+            <div class="text-left">
+              <span class="block text-sm sm:text-sm font-bold text-gray-900">Campus Leaders Archive</span>
+              <span class="block text-sm sm:text-sm font-semibold ">Empowering campus leaders</span>
+            </div>
+
+            <!-- Subtitle line below the title -->
+            <div class="mt-1">
+              <!-- <span class="block text-xs sm:text-sm text-gray-500">Empowering campus leaders</span> -->
+            </div>
           </div>
+        </a>
+
+        <!-- desktop nav links (kept separate and spaced) -->
+        <div class="hidden md:flex md:space-x-6">
+          <a href="index.html" data-section="dashboard" class="nav-item px-1 py-2 text-sm active-tab">Home</a>
+          <a href="signup.html" data-section="forum" class="nav-item px-1 py-2 text-sm">Profile</a>
+          <a href="signup.html" data-section="courses" class="nav-item px-1 py-2 text-sm">About Us</a>
+          <a href="signup.html" data-section="codelab" class="nav-item px-1 py-2 text-sm">Support</a>
         </div>
+      </div>
 
-        <div class="flex items-center space-x-4">
-          <form action="" method="GET" class="hidden md:flex items-center w-80">
-            <label for="global-search" class="sr-only">Search</label>
-            <div class="relative flex-1">
-              <input id="global-search" name="q" type="search" placeholder="Search profile, members, posts..." 
-                     class="w-full bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:bg-two" />
-              <button type="submit" aria-label="Search" class="absolute right-1 top-1/2 transform -translate-y-1/2 p-2 rounded-full bghover">
-                <i class="fas fa-search text-gray-600"></i>
-              </button>
-            </div>
-          </form>
-
-          <button id="mobile-search-btn" class="md:hidden p-2 rounded-full bghover" aria-expanded="false" aria-controls="mobile-search">
-            <i class="fas fa-search"></i>
-          </button>
-
-       
-
-          <div class="relative">
-            <button id="user-menu-button" class="flex items-center p-1 rounded-full focus:outline-none" aria-expanded="false" aria-haspopup="true" aria-controls="user-menu">
-              <div class="h-8 w-8 rounded-full bg-linear text-white flex items-center justify-center">
-                <i class="fas fa-user"></i>
-              </div>
+      <!-- RIGHT: search + icons (unchanged) -->
+      <div class="flex items-center space-x-4">
+        <form action="" method="GET" class="hidden md:flex items-center w-80">
+          <label for="global-search" class="sr-only">Search</label>
+          <div class="relative flex-1">
+            <input id="global-search" name="q" type="search" placeholder="Search profile, members, posts..."
+                   class="w-full bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:bg-two" />
+            <button type="submit" aria-label="Search" class="absolute right-1 top-1/2 transform -translate-y-1/2 p-2 rounded-full bghover">
+              <i class="fas fa-search text-gray-600"></i>
             </button>
-            <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200 z-50" role="menu" aria-hidden="true">
-              <a href="signup.html" class="block px-4 py-2 bghover" role="menuitem" tabindex="0">Sign up</a>
+          </div>
+        </form>
+
+        <button id="mobile-search-btn" class="md:hidden p-2 rounded-full bghover" aria-expanded="false" aria-controls="mobile-search">
+          <i class="fas fa-search"></i>
+        </button>
+
+        <div class="relative">
+          <button id="user-menu-button" class="flex items-center p-1 rounded-full focus:outline-none" aria-expanded="false" aria-haspopup="true" aria-controls="user-menu">
+            <div class="h-8 w-8 rounded-full bg-linear text-white flex items-center justify-center">
+              <i class="fas fa-user"></i>
             </div>
+          </button>
+          <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200 z-50" role="menu" aria-hidden="true">
+            <a href="signup.html" class="block px-4 py-2 bghover" role="menuitem" tabindex="0">Sign up</a>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <div id="mobile-search" class="hidden md:hidden border-t border-gray-200 bg-white px-4 py-3">
-      <form action="/search" method="GET" class="flex items-center gap-2">
-        <label for="mobile-search-input" class="sr-only">Search</label>
-        <input id="mobile-search-input" name="q" type="search" placeholder="Search courses, members, posts..." 
-               class="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none" />
-        <button type="submit" aria-label="Search" class="p-2 rounded-full bghover">
-          <i class="fas fa-search"></i>
-        </button>
-        <button id="mobile-search-close" type="button" class="p-2 rounded-full bghover" aria-label="Close search">
-          <i class="fas fa-times"></i>
-        </button>
-      </form>
-    </div>
-  </nav>
+  <div id="mobile-search" class="hidden md:hidden border-t border-gray-200 bg-white px-4 py-3">
+    <form action="/search" method="GET" class="flex items-center gap-2">
+      <label for="mobile-search-input" class="sr-only">Search</label>
+      <input id="mobile-search-input" name="q" type="search" placeholder="Search courses, members, posts..."
+             class="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none" />
+      <button type="submit" aria-label="Search" class="p-2 rounded-full bghover">
+        <i class="fas fa-search"></i>
+      </button>
+      <button id="mobile-search-close" type="button" class="p-2 rounded-full bghover" aria-label="Close search">
+        <i class="fas fa-times"></i>
+      </button>
+    </form>
+  </div>
+</nav>
+
 
   <main class="pt-20 pb-8">
     <section id="dashboard" class="section active max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -97,6 +114,24 @@
 
         <!-- center: THIS will be replaced by the dynamic feed container by the script below -->
         <div class="lg:col-span-2 space-y-6" id="feed-column">
+           <!-- NEWS CAROUSEL -->
+  <div id="news-carousel" class="mb-6 max-w-4xl mx-auto">
+    <div class="relative rounded-lg overflow-hidden shadow-sm bg-gray-100">
+      <!-- slides container -->
+      <div id="carousel-slides" class="relative h-56 sm:h-72 md:h-96"></div>
+
+      <!-- prev/next controls -->
+      <button id="carousel-prev" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-2 rounded-full shadow-md z-20" aria-label="Previous slide">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <button id="carousel-next" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-2 rounded-full shadow-md z-20" aria-label="Next slide">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+
+      <!-- indicators -->
+      <div id="carousel-indicators" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-20"></div>
+    </div>
+  </div>
           <!-- initial placeholder while JS boots -->
           <div id="posts-feed-loading" class="text-center p-8 text-gray-500">Loading feed…</div>
         </div>
@@ -232,12 +267,38 @@
     }
 
     // find the feed column and inject posts container (preserve same styling)
-    const feedColumn = document.getElementById('feed-column');
+    // const feedColumn = document.getElementById('feed-column');
+    // const existingLoading = document.getElementById('posts-feed-loading');
+    // if(feedColumn){
+    //   feedColumn.innerHTML = '<div id="posts-feed" class="space-y-6"></div>';
+    // }
+    // const postsContainer = document.getElementById('posts-feed');
+    // find the feed column and inject posts container without removing other elements (e.g. carousel)
+const feedColumn = document.getElementById('feed-column');
+// If there's already a posts container, keep it. Otherwise create it or reuse existing loading placeholder.
+if (feedColumn) {
+  let postsContainer = document.getElementById('posts-feed');
+
+  if (!postsContainer) {
+    // if a loading placeholder exists, convert it to the posts container
     const existingLoading = document.getElementById('posts-feed-loading');
-    if(feedColumn){
-      feedColumn.innerHTML = '<div id="posts-feed" class="space-y-6"></div>';
+    if (existingLoading && feedColumn.contains(existingLoading)) {
+      existingLoading.id = 'posts-feed';
+      existingLoading.className = 'space-y-6';
+      existingLoading.innerHTML = ''; // optional: clear the "Loading feed…" text if you want
+      postsContainer = existingLoading;
+    } else {
+      // otherwise append a new posts-feed at the end of feed-column (preserves carousel above)
+      postsContainer = document.createElement('div');
+      postsContainer.id = 'posts-feed';
+      postsContainer.className = 'space-y-6';
+      feedColumn.appendChild(postsContainer);
     }
-    const postsContainer = document.getElementById('posts-feed');
+  }
+}
+// finally get the container reference for later use
+const postsContainer = document.getElementById('posts-feed');
+
 
     // helper: escape
     function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>"']/g,(m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }

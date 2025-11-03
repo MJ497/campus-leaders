@@ -25,9 +25,22 @@
     
       <div class="flex items-center space-x-6">
        
-        <a href="dashboard.html" class="flex items-center gap-3">
-          <img src="logo.png" alt="Campus Leaders logo" class="h-20 w-auto" />
-          
+        <a href="dashboard.html" class="flex items-center gap-4">
+           <img src="logo.png" alt="Campus Leaders logo" class="h-20 w-auto flex-shrink-0" />
+
+          <!-- title block: two-line title + subtitle -->
+          <div class="leading-tight">
+            <!-- Main title: "Campus Leaders" and "Archive" on its own line -->
+            <div class="text-left">
+              <span class="block text-sm sm:text-sm font-bold text-gray-900">Campus Leaders Archive</span>
+              <span class="block text-sm sm:text-sm font-semibold ">Empowering campus leaders</span>
+            </div>
+
+            <!-- Subtitle line below the title -->
+            <div class="mt-1">
+              <!-- <span class="block text-xs sm:text-sm text-gray-500">Empowering campus leaders</span> -->
+            </div>
+          </div>
         </a>
 
         <!-- nav links (hidden on small screens) -->
@@ -124,6 +137,23 @@
                 
                 <!-- Main Content -->
                 <div class="lg:col-span-2 space-y-6">
+                  <div id="news-carousel" class="mb-6 max-w-4xl mx-auto">
+  <div class="relative rounded-lg overflow-hidden shadow-sm bg-gray-100">
+    <!-- slides container -->
+    <div id="carousel-slides" class="relative h-56 sm:h-72 md:h-96"></div>
+
+    <!-- prev/next controls -->
+    <button id="carousel-prev" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-2 rounded-full shadow-md z-20" aria-label="Previous slide">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <button id="carousel-next" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-2 rounded-full shadow-md z-20" aria-label="Next slide">
+      <i class="fas fa-chevron-right"></i>
+    </button>
+
+    <!-- indicators -->
+    <div id="carousel-indicators" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-20"></div>
+  </div>
+</div>
                     <!-- Create Post -->
                     <div class="card bg-white p-4 border border-gray-200">
                         <div class="flex items-center space-x-3 mb-4">

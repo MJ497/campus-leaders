@@ -1,7 +1,7 @@
 // sign.js - Combined Firebase email/password signup + login + Uploadcare upload + Paystack
 // CONFIG: update these if needed
 const REGISTRATION_FEE_NGN = 2950;
-const PAYSTACK_KEY = 'pk_test_cd5536a98573d218606597cfcb75a963cff8f1a4'; // replace with your Paystack key
+const PAYSTACK_KEY = 'pk_live_c70b41f949305738598a184d69c57c0b24eba0f3'; // replace with your Paystack key
 const SAVE_USER_ENDPOINT = '/api/auth/register'; // optional server hook (not required if using Firebase)
 
 // UPLOADCARE settings (replaces Imgur)
