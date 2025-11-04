@@ -18,6 +18,9 @@
     --two:#16a34a;
     
   }
+  .bg-coo{
+    background:var(--two);
+  }
   .hover:hover{
     cursor: pointer;
     color: #16a34a;
