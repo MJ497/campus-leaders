@@ -1,5 +1,5 @@
 // news-loader.js - loads top news items into elements with class "trending-news-list"
-// Also populates #news-carousel with an image/title/subtitle carousel which links to news pages.
+// Also populates #news-carousel (full-width hero) with an image/title/subtitle carousel which links to news pages.
 
 (async function(){
   const FIREBASE_CONFIG = {
@@ -43,7 +43,7 @@
     return img;
   }
 
-  // Carousel logic
+  // Carousel logic (full-width hero)
   function createCarousel(items){
     const slidesContainer = document.getElementById('carousel-slides');
     const indicatorsContainer = document.getElementById('carousel-indicators');
@@ -66,23 +66,30 @@
     items.forEach((n, idx) => {
       const a = document.createElement('a');
       a.href = '/news.html?id=' + encodeURIComponent(n.id);
+      // slide occupies entire hero area
       a.className = 'carousel-slide absolute inset-0 transition-opacity duration-500';
-      // Initially hide; show will remove hidden class
       if(idx !== 0) a.style.opacity = '0'; else a.style.opacity = '1';
       a.style.pointerEvents = (idx === 0) ? 'auto' : 'none';
 
-      // image
+      // image (covers full width/height)
       const imgWrap = document.createElement('div');
       imgWrap.className = 'w-full h-full';
       const img = makeImgElement(n.imageUrl || n.image || '', 'w-full h-full object-cover', n.title || 'news image');
       imgWrap.appendChild(img);
       a.appendChild(imgWrap);
 
-      // gradient + text overlay
-      const overlay = document.createElement('div');
-      overlay.className = 'absolute inset-x-0 bottom-0 p-4 sm:p-6 bg-gradient-to-t from-black/70 via-black/30 to-transparent text-white';
-      overlay.innerHTML = `<h3 class="text-sm sm:text-lg font-semibold mb-1">${escapeHtml(n.title || 'Untitled')}</h3>
-                           <p class="hidden sm:block text-xs opacity-90">${escapeHtml(n.summary || '')}</p>`;
+  // gradient + text overlay (bottom-left) - ensure it's above the hero overlay
+  // Full-width overlay that covers the hero; inner text wrapper sits at the bottom and is full width.
+  // The outer overlay is pointer-events-none so it doesn't block control clicks; the inner text wrapper is pointer-events-auto
+  const overlay = document.createElement('div');
+  overlay.className = 'absolute inset-0 p-4 sm:p-6 text-white z-30 pointer-events-none';
+  overlay.innerHTML = `
+    <div class="w-90 h-full flex items-end">
+      <div class="w-full max-w-none pointer-events-auto">
+        <h3 class="text-3xl md:text-5xl lg:text-5xl font-semibold mb-2 drop-shadow-lg leading-tight">${escapeHtml(n.title || 'Untitled')}</h3>
+        <p class="hidden sm:block text-lg md:text-xl opacity-95 drop-shadow">${escapeHtml(n.summary || '')}</p>
+      </div>
+    </div>`;
       a.appendChild(overlay);
 
       slidesContainer.appendChild(a);
@@ -175,17 +182,31 @@
     show(0);
   }
 
-  // original trending list population (keeps your previous behavior)
+  // trending list population (image left, text right; trimmed uppercase headline)
   async function populateTrendingList(items){
     const lists = document.querySelectorAll('.trending-news-list');
     lists.forEach(list=>{
       list.innerHTML = '';
-      if(!items || items.length === 0){ list.innerHTML = '<div class="text-sm text-gray-500 p-2">No news</div>'; return; }
+      if(!items || items.length === 0){
+        list.innerHTML = '<div class="text-sm text-white p-2">No news</div>'; return;
+      }
       items.forEach(n=>{
         const a = document.createElement('a');
         a.href = '/news.html?id='+encodeURIComponent(n.id);
-        a.className = 'block text-sm py-2 hover:bg-gray-50 px-2';
-        a.innerHTML = `<div class="font-medium">${escapeHtml(n.title||'Untitled')}</div><div class="text-xs text-gray-500">${escapeHtml(n.summary||'')}</div>`;
+        // flex row: image on left, text on right
+        a.className = 'block p-2 rounded hover:bg-white/10';
+        a.style.textDecoration = 'none';
+        a.innerHTML = `
+          <div class="flex items-start gap-3">
+            <div class="flex-shrink-0">
+              <img src="${escapeHtml(normalizeImgurUrl(n.imageUrl || n.image || ''))}" alt="${escapeHtml(n.title || 'img')}" class="h-12 w-12 object-cover rounded" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;120&quot; height=&quot;80&quot;><rect width=&quot;100%&quot; height=&quot;100%&quot; fill=&quot;%23ffffff22&quot;/><text x=&quot;50%&quot; y=&quot;50%&quot; dominant-baseline=&quot;middle&quot; text-anchor=&quot;middle&quot; fill=&quot;%23ffffff&quot; font-size=&quot;12&quot;>No image</text></svg>');" />
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold text-sm uppercase text-white">${escapeHtml(n.title||'Untitled')}</div>
+              <div class="text-xs text-white/90 mt-1">${escapeHtml((n.summary||'').slice(0, 120))}${(n.summary && n.summary.length>120) ? '…' : ''}</div>
+            </div>
+          </div>
+        `;
         list.appendChild(a);
       });
     });
@@ -194,26 +215,25 @@
   // fetch news and populate both trending list and carousel
   async function load(){
     try{
-      const snap = await db.collection('news').orderBy('createdAt','desc').limit(6).get();
+      const snap = await db.collection('news').orderBy('createdAt','desc').limit(8).get();
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       // populate trending list
-      populateTrendingList(items);
-      // populate carousel
-      createCarousel(items);
+      populateTrendingList(items.slice(0,6)); // trending shows top 6
+      // populate carousel with first 6 (or fewer)
+      createCarousel(items.slice(0,6));
     }catch(err){
       console.warn('news-loader failed', err);
       // show errors gracefully
-      document.querySelectorAll('.trending-news-list').forEach(l => l.innerHTML = '<div class="text-sm text-gray-500 p-2">Unable to load news</div>');
+      document.querySelectorAll('.trending-news-list').forEach(l => l.innerHTML = '<div class="text-sm text-white p-2">Unable to load news</div>');
       const slidesContainer = document.getElementById('carousel-slides');
       if(slidesContainer) slidesContainer.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 p-6">Unable to load news</div>';
     }
   }
 
-  // ensure the script runs after DOM ready. If DOMContentLoaded already fired, call load immediately.
+  // ensure the script runs after DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', load);
   } else {
-    // DOM already ready (deferred scripts often land here); run immediately
     setTimeout(load, 0);
   }
 })();

@@ -12,89 +12,109 @@
 </head>
 <body class="bg-white text-gray-900 min-h-screen">
   <!-- Navigation (unchanged) -->
-  <nav class="bg-white border-b border-gray-200 fixed w-full z-10">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex justify-between h-20 items-center">
-      <!-- LEFT: logo + title -->
-      <div class="flex items-center space-x-10"> <!-- increased gap here -->
-        <a href="index.html" class="flex items-center gap-4">
-          <img src="logo.png" alt="Campus Leaders logo" class="h-20 w-auto flex-shrink-0" />
-
-          <!-- title block: two-line title + subtitle -->
-          <div class="leading-tight">
-            <!-- Main title: "Campus Leaders" and "Archive" on its own line -->
-            <div class="text-left">
-              <span class="block text-sm sm:text-sm font-bold text-gray-900">CAMPUS LEADERS</span>
-              <span class="block text-sm sm:text-sm font-bold ">ARCHIVE</span>
+  <nav class="bg-white border-b border-gray-200  w-full z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-20 items-center">
+        <!-- LEFT: logo + title -->
+        <div class="flex items-center space-x-10">
+          <a href="index.html" class="flex items-center gap-4">
+            <img src="logo.png" alt="Campus Leaders logo" class="h-20 w-auto flex-shrink-0" />
+            <div class="leading-tight">
+              <div class="text-left">
+                <span class="block text-sm sm:text-sm font-bold text-gray-900">CAMPUS LEADERS</span>
+                <span class="block text-sm sm:text-sm font-bold ">ARCHIVE</span>
+              </div>
+              <div class="mt-1"></div>
             </div>
+          </a>
 
-            <!-- Subtitle line below the title -->
-            <div class="mt-1">
-              <!-- <span class="block text-xs sm:text-sm text-gray-500">Empowering campus leaders</span> -->
-            </div>
+          <div class="hidden md:flex md:space-x-6">
+            <a href="index.html" data-section="dashboard" class="nav-item px-1 py-2 text-sm active-tab">Home</a>
+            <a href="signup.html" data-section="forum" class="nav-item px-1 py-2 text-sm">Profile</a>
+            <a href="signup.html" data-section="courses" class="nav-item px-1 py-2 text-sm">About Us</a>
+            <a href="signup.html" data-section="codelab" class="nav-item px-1 py-2 text-sm">Support</a>
           </div>
-        </a>
-
-        <!-- desktop nav links (kept separate and spaced) -->
-        <div class="hidden md:flex md:space-x-6">
-          <a href="index.html" data-section="dashboard" class="nav-item px-1 py-2 text-sm active-tab">Home</a>
-          <a href="signup.html" data-section="forum" class="nav-item px-1 py-2 text-sm">Profile</a>
-          <a href="signup.html" data-section="courses" class="nav-item px-1 py-2 text-sm">About Us</a>
-          <a href="signup.html" data-section="codelab" class="nav-item px-1 py-2 text-sm">Support</a>
         </div>
-      </div>
 
-      <!-- RIGHT: search + icons (unchanged) -->
-      <div class="flex items-center space-x-4">
-        <form action="" method="GET" class="hidden md:flex items-center w-80">
-          <label for="global-search" class="sr-only">Search</label>
-          <div class="relative flex-1">
-            <input id="global-search" name="q" type="search" placeholder="Search profile, members, posts..."
-                   class="w-full bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:bg-two" />
-            <button type="submit" aria-label="Search" class="absolute right-1 top-1/2 transform -translate-y-1/2 p-2 rounded-full bghover">
-              <i class="fas fa-search text-gray-600"></i>
-            </button>
-          </div>
-        </form>
-
-        <button id="mobile-search-btn" class="md:hidden p-2 rounded-full bghover" aria-expanded="false" aria-controls="mobile-search">
-          <i class="fas fa-search"></i>
-        </button>
-
-        <div class="relative">
-          <button id="user-menu-button" class="flex items-center p-1 rounded-full focus:outline-none" aria-expanded="false" aria-haspopup="true" aria-controls="user-menu">
-            <div class="h-8 w-8 rounded-full bg-linear text-white flex items-center justify-center">
-              <i class="fas fa-user"></i>
+        <!-- RIGHT: search + icons -->
+        <div class="flex items-center space-x-4">
+          <form action="" method="GET" class="hidden md:flex items-center w-80">
+            <label for="global-search" class="sr-only">Search</label>
+            <div class="relative flex-1">
+              <input id="global-search" name="q" type="search" placeholder="Search profile, members, posts..."
+                     class="w-full bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:bg-two" />
+              <button type="submit" aria-label="Search" class="absolute right-1 top-1/2 transform -translate-y-1/2 p-2 rounded-full bghover">
+                <i class="fas fa-search text-gray-600"></i>
+              </button>
             </div>
+          </form>
+
+          <button id="mobile-search-btn" class="md:hidden p-2 rounded-full bghover" aria-expanded="false" aria-controls="mobile-search">
+            <i class="fas fa-search"></i>
           </button>
-          <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200 z-50" role="menu" aria-hidden="true">
-            <a href="signup.html" class="block px-4 py-2 bghover" role="menuitem" tabindex="0">Sign up</a>
+
+          <div class="relative">
+            <button id="user-menu-button" class="flex items-center p-1 rounded-full focus:outline-none" aria-expanded="false" aria-haspopup="true" aria-controls="user-menu">
+              <div class="h-8 w-8 rounded-full bg-linear text-white flex items-center justify-center">
+                <i class="fas fa-user"></i>
+              </div>
+            </button>
+            <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200 z-50" role="menu" aria-hidden="true">
+              <a href="signup.html" class="block px-4 py-2 bghover" role="menuitem" tabindex="0">Sign up</a>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div id="mobile-search" class="hidden md:hidden border-t border-gray-200 bg-white px-4 py-3">
-    <form action="/search" method="GET" class="flex items-center gap-2">
-      <label for="mobile-search-input" class="sr-only">Search</label>
-      <input id="mobile-search-input" name="q" type="search" placeholder="Search courses, members, posts..."
-             class="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none" />
-      <button type="submit" aria-label="Search" class="p-2 rounded-full bghover">
-        <i class="fas fa-search"></i>
-      </button>
-      <button id="mobile-search-close" type="button" class="p-2 rounded-full bghover" aria-label="Close search">
-        <i class="fas fa-times"></i>
-      </button>
-    </form>
-  </div>
-</nav>
+    <div id="mobile-search" class="hidden md:hidden border-t border-gray-200 bg-white px-4 py-3">
+      <form action="/search" method="GET" class="flex items-center gap-2">
+        <label for="mobile-search-input" class="sr-only">Search</label>
+        <input id="mobile-search-input" name="q" type="search" placeholder="Search courses, members, posts..."
+               class="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none" />
+        <button type="submit" aria-label="Search" class="p-2 rounded-full bghover">
+          <i class="fas fa-search"></i>
+        </button>
+        <button id="mobile-search-close" type="button" class="p-2 rounded-full bghover" aria-label="Close search">
+          <i class="fas fa-times"></i>
+        </button>
+      </form>
+    </div>
+  </nav>
 
+  <!-- HERO CAROUSEL (full width) -->
+  <section id="news-hero" class="w-full ">
+    <div class="relative w-full overflow-hidden">
+      <div id="news-carousel" class="relative w-full">
+        <div class="relative h-[50vh] md:h-[70vh] lg:h-[80vh]">
+          <!-- slides container (populated by news-loader.js) -->
+          <div id="carousel-slides" class="relative w-full h-full"></div>
 
-  <main class="pt-20 pb-8">
-    <section id="dashboard" class="section active max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Overlay that covers the entire hero section (gradient: transparent top -> green bottom) -->
+    <div id="hero-overlay" class="absolute inset-0 pointer-events-none z-20" aria-hidden="true"
+      style="background: linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0, 0, 0, 0.637) 40%, rgb(12, 14, 13) 100%);">
+    </div>
+
+          <!-- prev/next controls -->
+          <button id="carousel-prev" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-3 rounded-full shadow-md z-20" aria-label="Previous slide">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button id="carousel-next" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-3 rounded-full shadow-md z-20" aria-label="Next slide">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+
+          <!-- indicators -->
+          <div id="carousel-indicators" class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 z-20"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- main content (three columns) -->
+  <main class="pt-8 pb-8">
+    <section id="dashboard" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <!-- left: keep CTA card (unchanged) -->
+        <!-- LEFT: CTA -->
         <div class="lg:col-span-1 space-y-6 ">
           <div class="card bg-white p-6 border border-gray-200">
             <div class="flex flex-col items-center">
@@ -112,36 +132,20 @@
           </div>
         </div>
 
-        <!-- center: THIS will be replaced by the dynamic feed container by the script below -->
+        <!-- CENTER: feed column (posts) -->
         <div class="lg:col-span-2 space-y-6" id="feed-column">
-           <!-- NEWS CAROUSEL -->
-  <div id="news-carousel" class="mb-6 max-w-4xl mx-auto">
-    <div class="relative rounded-lg overflow-hidden shadow-sm bg-gray-100">
-      <!-- slides container -->
-      <div id="carousel-slides" class="relative h-56 sm:h-72 md:h-96"></div>
-
-      <!-- prev/next controls -->
-      <button id="carousel-prev" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-2 rounded-full shadow-md z-20" aria-label="Previous slide">
-        <i class="fas fa-chevron-left"></i>
-      </button>
-      <button id="carousel-next" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-2 rounded-full shadow-md z-20" aria-label="Next slide">
-        <i class="fas fa-chevron-right"></i>
-      </button>
-
-      <!-- indicators -->
-      <div id="carousel-indicators" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-20"></div>
-    </div>
-  </div>
-          <!-- initial placeholder while JS boots -->
-          <div id="posts-feed-loading" class="text-center p-8 text-gray-500">Loading feed…</div>
+          <!-- posts-feed gets injected here by your inline script -->
+          <div id="posts-feed" class="space-y-6">
+            <div class="p-6 text-sm text-gray-500">Loading feed…</div>
+          </div>
         </div>
 
-        <!-- right: trending (kept as-is) -->
+        <!-- RIGHT: trending (green background, white uppercase) -->
         <div class="lg:col-span-1 space-y-6">
-          <div class="card bg-white p-6 border border-gray-200">
-              <h3 class="font-bold mb-4">Trending News</h3>
+          <div class="p-6 rounded border border-gray-200 bg-green-600 text-white">
+              <h3 class="font-bold mb-4 uppercase">Trending News</h3>
               <div class="space-y-4 trending-news-list">
-                <div class="text-sm text-gray-500 p-2">Loading news…</div>
+                <div class="text-sm text-white p-2">Loading news…</div>
               </div>
             </div>
         </div>
@@ -150,7 +154,7 @@
     </section>
   </main>
 
-   <footer class="bg-gray-900 text-white border-t border-gray-200 py-8 mt-12">
+  <footer class="bg-gray-900 text-white border-t border-gray-200 py-8 mt-12">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
         <div>
@@ -160,33 +164,27 @@
         <div>
           <h4 class="font-medium mb-3">Community</h4>
           <ul class="space-y-2">
-          
             <li><a href="#" class="text-sm text-white hover">Events</a></li>
-           
           </ul>
         </div>
-      
         <div>
           <h4 class="font-medium mb-3">Company</h4>
           <ul class="space-y-2">
             <li><a href="about.html" class="text-sm text-white hover">About</a></li>
-          
             <li><a href="contact.html" class="text-sm text-white hover">Contact</a></li>
           </ul>
-        </div> 
-         <div>
+        </div>
+        <div>
           <h4 class="font-medium mb-3">Socials</h4>
-          <ul class="space-y-2">
-            <li>  <a href="#" class="text-white hover"><i class="fab fa-twitter"></i></a>  Twitter</li>
+           <ul class="space-y-2">
+            <li>  <a href="#" class="text-white hover"><i class="fab fa-twitter"></i>Twitter</a>  </li>
           
           
-            <li><a href="#" class="text-white hover"><i class="fab fa-linkedin"></i></a> linkedin</li>
-            <li> <a href="#" class="text-white hover"><i class="fab fa-facebook"></i></a> Facebook</li>
+            <li><a href="#" class="text-white hover"><i class="fab fa-linkedin"></i>linkedin</a> </li>
+            <li> <a href="https://www.facebook.com/profile.php?id=61581544298490" class="text-white hover"><i class="fab fa-facebook"></i>Facebook</a> </li>
           </ul>
-        </div> 
-      
+        </div>
       </div>
-    
     </div>
   </footer>
 
@@ -194,260 +192,13 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- your loader scripts -->
   <script src="news-loader.js" defer></script>
-<script src="main.js" defer></script>
-  <!-- Inline script: feed-only behavior (realtime + fallback) -->
+  <script src="main.js" defer></script>
+
+  <!-- small UX: user menu toggle (moved here in case main.js assumes it exists) -->
   <script>
-  (function(){
-    // ===== CONFIG - update if needed =====
-    const FIREBASE_CONFIG = {
-      apiKey: "AIzaSyDC3L5vruhYXfarn5O81cLld50oagYkmxE",
-      authDomain: "campus-leaders.firebaseapp.com",
-      projectId: "campus-leaders",
-      storageBucket: "campus-leaders.firebasestorage.app",
-      messagingSenderId: "445360528951",
-      appId: "1:445360528951:web:712da8859c8ac4cb6129b2"
-    };
-    const POSTS_COLLECTION = "posts";
-    const POSTS_PAGE_LIMIT = 50;
-    // =====================================
-
-    // init firebase (compat)
-    try {
-      if (!window.firebase.apps || window.firebase.apps.length === 0) {
-        firebase.initializeApp(FIREBASE_CONFIG);
-      }
-    } catch (e) {
-      console.warn('Firebase init error', e);
-    }
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
-    // Force long polling to avoid WebChannel transport blocks (helps many devices/networks)
-    try {
-      db.settings && db.settings({ experimentalForceLongPolling: true });
-      console.log('Firestore: experimentalForceLongPolling enabled');
-    } catch (e) {
-      console.warn('Could not set Firestore setting:', e);
-    }
-
-    // Utility: normalize Imgur/potential page links to direct image URLs
-    function normalizeImgurUrl(url){
-      if(!url) return url;
-      try{
-        const u = url.trim();
-        if(/^https?:\/\/i\.imgur\.com\//i.test(u)) return u;
-        const m = u.match(/imgur\.com\/(?:a\/|gallery\/)?([A-Za-z0-9]+)/i);
-        if(m && m[1]) return 'https://i.imgur.com/' + m[1] + '.jpg';
-        return u;
-      }catch(e){ return url; }
-    }
-
-    // Create image element with fallback
-    function makeImg(src, classes){
-      const img = document.createElement('img');
-      img.className = classes || '';
-      img.loading = 'lazy';
-      img.alt = 'image';
-      img.src = normalizeImgurUrl(src || '');
-      img.onerror = function(){
-        // try .jpg extension fallback for imgur ids without extension
-        const m = this.src.match(/i\.imgur\.com\/([A-Za-z0-9]+)(\.[a-z]+)?$/i);
-        if(m && m[1] && !m[2]){
-          this.src = 'https://i.imgur.com/' + m[1] + '.jpg';
-          return;
-        }
-        // final SVG placeholder
-        this.src = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400"><rect width="100%" height="100%" fill="#e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#6b7280" font-size="20">Image not available</text></svg>');
-      };
-      return img;
-    }
-
-    // find the feed column and inject posts container (preserve same styling)
-    // const feedColumn = document.getElementById('feed-column');
-    // const existingLoading = document.getElementById('posts-feed-loading');
-    // if(feedColumn){
-    //   feedColumn.innerHTML = '<div id="posts-feed" class="space-y-6"></div>';
-    // }
-    // const postsContainer = document.getElementById('posts-feed');
-    // find the feed column and inject posts container without removing other elements (e.g. carousel)
-const feedColumn = document.getElementById('feed-column');
-// If there's already a posts container, keep it. Otherwise create it or reuse existing loading placeholder.
-if (feedColumn) {
-  let postsContainer = document.getElementById('posts-feed');
-
-  if (!postsContainer) {
-    // if a loading placeholder exists, convert it to the posts container
-    const existingLoading = document.getElementById('posts-feed-loading');
-    if (existingLoading && feedColumn.contains(existingLoading)) {
-      existingLoading.id = 'posts-feed';
-      existingLoading.className = 'space-y-6';
-      existingLoading.innerHTML = ''; // optional: clear the "Loading feed…" text if you want
-      postsContainer = existingLoading;
-    } else {
-      // otherwise append a new posts-feed at the end of feed-column (preserves carousel above)
-      postsContainer = document.createElement('div');
-      postsContainer.id = 'posts-feed';
-      postsContainer.className = 'space-y-6';
-      feedColumn.appendChild(postsContainer);
-    }
-  }
-}
-// finally get the container reference for later use
-const postsContainer = document.getElementById('posts-feed');
-
-
-    // helper: escape
-    function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>"']/g,(m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
-
-    // render a single post using your card styles
-    function renderPost(post){
-      const wrapper = document.createElement('div');
-      wrapper.className = 'card bg-white p-6 border border-gray-200 mb-4';
-      wrapper.dataset.postId = post.id || '';
-
-      // header
-      const created = post.createdAt && post.createdAt.toDate ? post.createdAt.toDate() : (post.createdAt ? new Date(post.createdAt) : new Date());
-      const timeAgo = timeSince(created);
-      const authorName = (post.authorFirst && post.authorLast) ? (post.authorFirst + ' ' + post.authorLast) : (post.authorName || 'Anonymous');
-
-      const header = document.createElement('div'); header.className='flex items-center justify-between mb-4';
-      const left = document.createElement('div'); left.className='flex items-center space-x-3';
-
-      // avatar
-      const avWrap = document.createElement('div');
-      const avatarUrl = post.authorImageUrl || post.author?.imageUrl || post.authorImage || null;
-      if(avatarUrl){
-        const img = makeImg(avatarUrl,'h-10 w-10 rounded-full object-cover');
-        avWrap.appendChild(img);
-      } else {
-        avWrap.innerHTML = '<div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center"><i class="fas fa-user"></i></div>';
-      }
-      left.appendChild(avWrap);
-
-      const meta = document.createElement('div');
-      meta.innerHTML = `<h4 class="font-bold">${escapeHtml(authorName)}</h4><p class="text-xs text-gray-500">${escapeHtml(timeAgo)}</p>`;
-      left.appendChild(meta);
-      header.appendChild(left);
-
-      const more = document.createElement('button'); more.className='text-gray-400 hover'; more.setAttribute('aria-label','More options'); more.innerHTML = '<i class="fas fa-ellipsis-h"></i>';
-      header.appendChild(more);
-      wrapper.appendChild(header);
-
-      // image
-      if(post.imageUrl){
-        const imgWrap = document.createElement('div'); imgWrap.className='mb-4';
-        imgWrap.appendChild(makeImg(post.imageUrl,'w-full h-48 sm:h-60 md:h-72 object-cover rounded-lg border border-gray-100'));
-        wrapper.appendChild(imgWrap);
-      }
-
-      // title & body
-      if(post.title){
-        const t = document.createElement('h3'); t.className='text-lg font-semibold mb-2'; t.textContent = post.title;
-        wrapper.appendChild(t);
-      }
-      const p = document.createElement('p'); p.className='mb-3 text-sm text-gray-800'; p.textContent = post.body || '';
-      wrapper.appendChild(p);
-
-      // tags (optional)
-      if(post.tags && Array.isArray(post.tags) && post.tags.length){
-        const tagsRow = document.createElement('div'); tagsRow.className='flex flex-wrap gap-2 mb-4';
-        post.tags.forEach(tag => {
-          const s = document.createElement('span'); s.className='text-xs px-2 py-1 bg-two text-white rounded-full'; s.textContent = '#'+tag;
-          tagsRow.appendChild(s);
-        });
-        wrapper.appendChild(tagsRow);
-      }
-
-      // actions
-      const actions = document.createElement('div'); actions.className='flex justify-between text-sm text-gray-500 border-t border-b border-gray-200 py-2 mb-4';
-      actions.innerHTML = `
-        <button class="flex items-center hover" aria-label="Like"><i class="far fa-thumbs-up mr-1"></i> Like <span class="ml-2 like-count">${post.likeCount||0}</span></button>
-        <button class="flex items-center hover" aria-label="Comment"><i class="far fa-comment mr-1"></i> Comment <span class="ml-2 comment-count">${post.commentCount||0}</span></button>
-        <button class="flex items-center hover" aria-label="Share"><i class="fas fa-share mr-1"></i> Share <span class="ml-2 share-count">${post.shareCount||0}</span></button>
-      `;
-      wrapper.appendChild(actions);
-
-      // comment input (non-auth users see placeholder)
-      const commentRow = document.createElement('div'); commentRow.className='flex items-center space-x-3';
-      commentRow.innerHTML = `
-        <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center"><i class="fas fa-user text-xs"></i></div>
-        <div class="flex-1 relative">
-          <input type="text" placeholder="Add a comment..." class="w-full bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none" />
-          <button class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover" aria-label="Add emoji"><i class="far fa-smile"></i></button>
-        </div>
-      `;
-      wrapper.appendChild(commentRow);
-
-      return wrapper;
-    }
-
-    // timeSince helper
-    function timeSince(date){
-      const seconds = Math.floor((new Date() - date)/1000);
-      let interval = Math.floor(seconds / 31536000);
-      if(interval >= 1) return interval + 'y ago';
-      interval = Math.floor(seconds / 2592000);
-      if(interval >= 1) return interval + 'mo ago';
-      interval = Math.floor(seconds / 86400);
-      if(interval >= 1) return interval + 'd ago';
-      interval = Math.floor(seconds / 3600);
-      if(interval >= 1) return interval + 'h ago';
-      interval = Math.floor(seconds / 60);
-      if(interval >= 1) return interval + 'm ago';
-      return 'just now';
-    }
-
-    // Attach robust posts listener (realtime then fallback to polling)
-    function attachRobustPostsListener(container){
-      if(!db || !container) return;
-      let pollTimer = null;
-
-      async function fallbackGetAndPoll(){
-        try {
-          const snap = await db.collection(POSTS_COLLECTION).orderBy('createdAt','desc').limit(POSTS_PAGE_LIMIT).get();
-          container.innerHTML = '';
-          snap.forEach(doc => container.appendChild(renderPost(Object.assign({id: doc.id}, doc.data()))));
-          if(pollTimer) clearInterval(pollTimer);
-          pollTimer = setInterval(async ()=>{
-            try {
-              const s2 = await db.collection(POSTS_COLLECTION).orderBy('createdAt','desc').limit(POSTS_PAGE_LIMIT).get();
-              container.innerHTML = '';
-              s2.forEach(doc => container.appendChild(renderPost(Object.assign({id: doc.id}, doc.data()))));
-            } catch(err){ console.warn('Polling GET failed', err); }
-          }, 10000);
-        } catch (err){
-          console.error('Fallback GET failed', err);
-          container.innerHTML = '<div class="p-6 text-sm text-gray-500">Unable to load feed right now.</div>';
-        }
-      }
-
-      try {
-        const q = db.collection(POSTS_COLLECTION).orderBy('createdAt','desc').limit(POSTS_PAGE_LIMIT);
-        q.onSnapshot(snapshot=>{
-          container.innerHTML = '';
-          snapshot.forEach(doc => container.appendChild(renderPost(Object.assign({id: doc.id}, doc.data()))));
-        }, err=>{
-          console.warn('Realtime onSnapshot error — falling back to GET+poll', err);
-          fallbackGetAndPoll();
-        });
-      } catch(e){
-        console.warn('onSnapshot attach failed — using fallback', e);
-        fallbackGetAndPoll();
-      }
-    }
-
-    // start
-    if(postsContainer){
-      postsContainer.innerHTML = '<div class="p-6 text-sm text-gray-500">Loading feed…</div>';
-      attachRobustPostsListener(postsContainer);
-    }
-
-    // convenience: expose reload helper
-    window.CampusLeaders = window.CampusLeaders || {};
-    window.CampusLeaders.reloadPosts = function(){ attachRobustPostsListener(postsContainer); };
-
-    // small UX: user menu toggle
     (function(){
       const umBtn = document.getElementById('user-menu-button');
       const um = document.getElementById('user-menu');
@@ -469,8 +220,27 @@ const postsContainer = document.getElementById('posts-feed');
         document.getElementById('mobile-search')?.classList.add('hidden');
       });
     })();
-
-  })();
   </script>
+    <script>
+    // Make mobile search bar work like desktop search
+    document.addEventListener('DOMContentLoaded', function() {
+      const mobileSearchForm = document.querySelector('#mobile-search form');
+      const mobileSearchInput = document.querySelector('#mobile-search input[name="q"]');
+      if (mobileSearchForm && mobileSearchInput && typeof doSearch === 'function') {
+        mobileSearchForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const q = mobileSearchInput.value.trim();
+          if (q) doSearch(q);
+        });
+        mobileSearchInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const q = mobileSearchInput.value.trim();
+            if (q) doSearch(q);
+          }
+        });
+      }
+    });
+    </script>
 </body>
 </html>

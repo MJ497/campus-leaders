@@ -46,6 +46,7 @@
             <a href="profile.html" class="nav-item px-1 py-2 text-sm active-tab font-semibold">Profile</a>
             <a href="about.html" class="nav-item px-1 py-2 text-sm">About Us</a>
             <a href="contact.html" class="nav-item px-1 py-2 text-sm">Support</a>
+             <a href="database.html"  class="nav-item px-1 py-2 text-sm">Database</a>
           </div>
         </div>
 
@@ -225,12 +226,12 @@
         </div> 
          <div>
           <h4 class="font-medium mb-3">Socials</h4>
-          <ul class="space-y-2">
-            <li>  <a href="#" class="text-white hover"><i class="fab fa-twitter"></i></a>  Twitter</li>
+           <ul class="space-y-2">
+            <li>  <a href="#" class="text-white hover"><i class="fab fa-twitter"></i>Twitter</a>  </li>
           
           
-            <li><a href="#" class="text-white hover"><i class="fab fa-linkedin"></i></a> linkedin</li>
-            <li> <a href="#" class="text-white hover"><i class="fab fa-facebook"></i></a> Facebook</li>
+            <li><a href="#" class="text-white hover"><i class="fab fa-linkedin"></i>linkedin</a> </li>
+            <li> <a href="https://www.facebook.com/profile.php?id=61581544298490" class="text-white hover"><i class="fab fa-facebook"></i>Facebook</a> </li>
           </ul>
         </div> 
       
@@ -593,5 +594,89 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </script>
 
+<!-- <script>
+  // Download profile details as a Word (.doc) file
+  document.getElementById('download-json')?.addEventListener('click', function(){
+    const fullname = document.getElementById('profile-fullname')?.textContent || '';
+    const position = document.getElementById('profile-position')?.textContent || '';
+    const school = document.getElementById('profile-school')?.textContent || '';
+    const year = document.getElementById('profile-year')?.textContent || '';
+    const association = document.getElementById('association')?.textContent || '';
+    const state = document.getElementById('state')?.textContent || '';
+    const email = document.getElementById('email')?.textContent || '';
+    const phone = document.getElementById('phone')?.textContent || '';
+    const bio = document.getElementById('bio')?.textContent || '';
+
+    const html = `
+      <html>
+        <head><meta charset="utf-8"><title>${fullname} - Profile</title></head>
+        <body>
+          <h1>${fullname}</h1>
+          <p><strong>Position:</strong> ${position}</p>
+          <p><strong>School / Year:</strong> ${school} ${year}</p>
+          <p><strong>Association:</strong> ${association}</p>
+          <p><strong>State:</strong> ${state}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Phone:</strong> ${phone}</p>
+          <h3>Bio</h3>
+          <p>${bio.replace(/\n/g,'<br/>')}</p>
+        </body>
+      </html>`;
+
+    const blob = new Blob([html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (fullname ? fullname.replace(/\s+/g,'_') : 'profile') + '.doc';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=> URL.revokeObjectURL(url), 10000);
+  });
+
+  // Export vCard (basic)
+  document.getElementById('download-vcard')?.addEventListener('click', function(){
+    const fullname = document.getElementById('profile-fullname')?.textContent || '';
+    const email = document.getElementById('email')?.textContent || '';
+    const phone = document.getElementById('phone')?.textContent || '';
+    const lines = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN:${fullname}`,
+      email ? `EMAIL;TYPE=INTERNET:${email}` : '',
+      phone ? `TEL;TYPE=CELL:${phone}` : '',
+      'END:VCARD'
+    ].filter(Boolean).join('\r\n');
+    const blob = new Blob([lines], { type: 'text/vcard' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = (fullname ? fullname.replace(/\s+/g,'_') : 'contact') + '.vcf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=> URL.revokeObjectURL(url), 10000);
+  });
+</script> -->
+
 </body>
+
+<script>
+// Make mobile search bar work like desktop search
+document.addEventListener('DOMContentLoaded', function() {
+  const mobileSearchForm = document.querySelector('#mobile-search form');
+  const mobileSearchInput = document.querySelector('#mobile-search input[name="q"]');
+  if (mobileSearchForm && mobileSearchInput && typeof doSearch === 'function') {
+    mobileSearchForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const q = mobileSearchInput.value.trim();
+      if (q) doSearch(q);
+    });
+    mobileSearchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const q = mobileSearchInput.value.trim();
+        if (q) doSearch(q);
+      }
+    });
+  }
+});
+</script>
 </html>

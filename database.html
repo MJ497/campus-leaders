@@ -15,9 +15,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script>
-  // Make mobile search bar work like desktop search
-  </script>
 </head>
 <body class="bg-white text-gray-900 min-h-screen">
     <!-- Navigation -->
@@ -47,11 +44,11 @@
 
         <!-- nav links (hidden on small screens) -->
         <div class="hidden md:flex md:space-x-6">
-          <a href="dashboard.html" data-section="dashboard" class="nav-item px-1 py-2 text-sm active-tab">Home</a>
+          <a href="dashboard.html" data-section="dashboard" class="nav-item px-1 py-2 text-sm ">Home</a>
           <a href="profile.html" data-section="forum" class="nav-item px-1 py-2 text-sm">Profile</a>
           <a href="about.html" data-section="courses" class="nav-item px-1 py-2 text-sm">About Us</a>
           <a href="contact.html" data-section="codelab" class="nav-item px-1 py-2 text-sm">Support</a>
-            <a href="database.html"  class="nav-item px-1 py-2 text-sm">Database</a>
+            <a href="database.html"  class="nav-item px-1 py-2 text-sm active-tab">Database</a>
         </div>
       </div>
 
@@ -126,148 +123,21 @@
     </div>
   </nav>
 
-  <!-- Mobile search overlay (hidden by default) -->
-  <div id="mobile-search" class="hidden md:hidden border-t border-gray-200 bg-white px-4 py-3 z-20">
-    <form action="" method="GET" class="flex items-center gap-2">
-      <label for="global-search" class="sr-only">Search</label>
-      <div class="relative flex-1">
-        <input id="global-search" name="q" type="search" placeholder="Search profile, members, posts..." 
-               class="w-full bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:bg-two" />
-        <button type="submit" aria-label="Search" class="absolute right-1 top-1/2 transform -translate-y-1/2 p-2 rounded-full bghover">
-          <i class="fas fa-search text-gray-600"></i>
-        </button>
-        <button id="mobile-search-close" type="button" class="p-2 rounded-full bghover" aria-label="Close search">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-    </form>
-  </div>
-
-  <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Desktop search already wired to doSearch via form submit
-    // Wire mobile search form to doSearch
-    const mobileSearchForm = document.querySelector('#mobile-search form');
-    const mobileSearchInput = document.querySelector('#mobile-search input[name="q"]');
-    if (mobileSearchForm && mobileSearchInput && typeof doSearch === 'function') {
-      mobileSearchForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const q = mobileSearchInput.value.trim();
-        if (q) doSearch(q);
-      });
-      mobileSearchInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          const q = mobileSearchInput.value.trim();
-          if (q) doSearch(q);
-        }
-      });
-    }
-  });
-  </script>
-
-  <!-- HERO CAROUSEL (full width) -->
-  <section id="news-hero" class="w-full ">
-    <div class="relative w-full overflow-hidden">
-      <div id="news-carousel" class="relative w-full">
-        <div class="relative h-[50vh] md:h-[70vh] lg:h-[80vh]">
-          <!-- slides container (populated by news-loader.js) -->
-          <div id="carousel-slides" class="relative w-full h-full"></div>
-
-          <!-- Overlay that covers the entire hero section -->
-          <div id="hero-overlay" class="absolute inset-0 pointer-events-none z-20" aria-hidden="true"
-               style="background: linear-gradient(180deg, rgba(0,0,0,0.0) 0%,rgba(0, 0, 0, 0.637) 40%, rgb(12, 14, 13) 100%);">
-          </div>
-    <main class="pt-20 pb-8">
-          <!-- prev/next controls -->
-          <button id="carousel-prev" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-3 rounded-full shadow-md z-20" aria-label="Previous slide">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-          <button id="carousel-next" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-3 rounded-full shadow-md z-20" aria-label="Next slide">
-            <i class="fas fa-chevron-right"></i>
-          </button>
-        <!-- Dashboard -->
-          <!-- indicators -->
-          <div id="carousel-indicators" class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 z-20"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-    <main class="pt-8 pb-8">
-        <section id="dashboard" class="section active max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                <!-- Left Sidebar -->
-                <div class="lg:col-span-1 space-y-6">
-                    <!-- Profile Card -->
-                    <div class="card bg-white p-6 border border-gray-200">
-                        <div class="flex flex-col items-center">
-                            <div class="h-20 w-20 rounded-full  bg-linear text-white flex items-center justify-center mb-3 text-2xl">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <h3 class="font-bold">John Obi</h3>
-                            <p class="text-sm text-gray-500 mb-4">SUG President</p>
-                            <div class="w-full border-t border-gray-200 pt-4">
-                                <div class="flex justify-between text-sm mb-2">
-                                    <span class="text-gray-500">UNILAG 2019</span>
-                                    <span class="font-medium"></span>
-                                </div>
-                               
-                            </div>
-                        </div>
-                    </div>
-                    
-                  
-                </div>
-                
-                <!-- Main Content -->
-                <div class="lg:col-span-2 space-y-6">
-                    <!-- Create Post -->
-                    <div class="card bg-white p-4 border border-gray-200">
-                        <div class="flex items-center space-x-3 mb-4">
-                            <div class="h-10 w-10 rounded-full  bg-linear text-white flex items-center justify-center">
-                                <i class="fas fa-image"></i>
-                            </div>
-                            <button class="flex-1 text-left px-4 py-2 bg-gray-100 rounded-full bghover text-gray-500">
-                                Start a post...
-                            </button>
-                        </div>
-                   
-                    </div>
-                    
-      
-
-                    
-                    
-                </div>
-                
-                
-                 <div class="lg:col-span-1 space-y-6">
-                 
-                    
-                    <!-- Trending Discussions -->
-           <div class="p-6 rounded border border-gray-200 bg-green-600 text-white">
-            <h3 class="font-bold mb-4">Trending News</h3>
-            <div class="space-y-4 trending-news-list">
-              <div class="text-sm text-gray-500 p-2">Loading news…</div>
-            </div>
-            <!-- <button class="w-full mt-4 btn-primary py-2 rounded-full text-sm font-medium">View all</button> -->
-          </div>
-                </div>
-            </div>
-            
-        </section>
-
-        <!-- Forum -->
-  
-
  
 
-   
-            
-      
-               
-            
+    <main class="pt-8 pb-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-2xl font-bold mb-6">User Database</h2>
+        <div id="user-table-container" class="overflow-auto border rounded bg-white"></div>
+      </div>
+      <!-- Modal for user profile -->
+      <div id="user-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black opacity-40"></div>
+        <div class="relative w-full max-w-2xl bg-white rounded-lg shadow-lg p-6 z-10 overflow-auto max-h-[90vh]">
+          <button id="close-user-modal" class="absolute top-2 right-2 px-3 py-1 rounded bghover">Close</button>
+          <div id="user-modal-content"></div>
+        </div>
+      </div>
     </main>
 
     <footer class="bg-gray-900 text-white border-t border-gray-200 py-8 mt-12">
@@ -620,6 +490,102 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
   </script>
 
-<script src="news-loader.js" defer></script>
+
 </body>
+
+<script>
+// --- User Table & Modal Logic ---
+document.addEventListener('DOMContentLoaded', function() {
+  // Firestore ref
+  const db = window.firebase?.firestore?.();
+  const tableContainer = document.getElementById('user-table-container');
+  const modal = document.getElementById('user-modal');
+  const modalContent = document.getElementById('user-modal-content');
+  const closeModalBtn = document.getElementById('close-user-modal');
+
+  // Helper: group users by state and school
+  function groupUsers(users) {
+    const grouped = {};
+    users.forEach(u => {
+      const state = u.stateName || 'Unknown State';
+      const school = u.schoolName || 'Unknown School';
+      if (!grouped[state]) grouped[state] = {};
+      if (!grouped[state][school]) grouped[state][school] = [];
+      grouped[state][school].push(u);
+    });
+    return grouped;
+  }
+
+  // Render table
+  function renderTable(users) {
+    const grouped = groupUsers(users);
+    let html = '<table class="min-w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">State</th><th class="p-2 text-left">School</th><th class="p-2 text-left">Name</th><th class="p-2 text-left">Position</th><th class="p-2 text-left">Association</th></tr></thead><tbody>';
+    Object.keys(grouped).sort().forEach(state => {
+      Object.keys(grouped[state]).sort().forEach(school => {
+        grouped[state][school].forEach(u => {
+          html += `<tr class="hover:bg-gray-100 cursor-pointer" data-uid="${u.uid}">
+            <td class="p-2">${state}</td>
+            <td class="p-2">${school}</td>
+            <td class="p-2 text-blue-700 underline">${(u.firstName||'') + ' ' + (u.lastName||'')}</td>
+            <td class="p-2">${u.position||''}</td>
+            <td class="p-2">${u.association||''}</td>
+          </tr>`;
+        });
+      });
+    });
+    html += '</tbody></table>';
+    tableContainer.innerHTML = html;
+
+    // Add click listeners to rows
+    Array.from(tableContainer.querySelectorAll('tr[data-uid]')).forEach(row => {
+      row.addEventListener('click', function() {
+        const uid = row.getAttribute('data-uid');
+        const user = users.find(u => u.uid === uid);
+        if (user) showUserModal(user);
+      });
+    });
+  }
+
+  // Show modal with user profile
+  function showUserModal(user) {
+    let html = `<div class="flex items-center gap-4 mb-4">
+      <div class="h-20 w-20 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
+        ${user.imageUrl ? `<img src="${user.imageUrl}" class="h-full w-full object-cover" alt="${user.firstName||''} ${user.lastName||''}">` : '<i class="fas fa-user text-2xl text-gray-400"></i>'}
+      </div>
+      <div>
+        <div class="font-bold text-lg">${(user.firstName||'') + ' ' + (user.lastName||'')}</div>
+        <div class="text-sm text-gray-600">${user.schoolName||''} ${user.yearHeld||''}</div>
+        <div class="text-xs text-gray-500 mt-1">${user.position||''} ${user.stateName ? '• ' + user.stateName : ''} ${user.association ? '• ' + user.association : ''}</div>
+        <div class="text-xs text-gray-500 mt-2">${user.email ? `<a href="mailto:${user.email}" class="text-blue-600">${user.email}</a>` : ''} ${user.phone ? ` • <a href="tel:${user.phone}" class="text-blue-600">${user.phone}</a>` : ''}</div>
+      </div>
+    </div>`;
+    if (user.bio) html += `<div class="mb-3 text-sm text-gray-700"><strong>Bio:</strong> ${user.bio.replace(/\n/g,'<br>')}</div>`;
+    modalContent.innerHTML = html;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  // Close modal
+  closeModalBtn.addEventListener('click', function() {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modalContent.innerHTML = '';
+  });
+
+  // Fetch users from Firestore
+  async function fetchUsers() {
+    if (!db) { tableContainer.innerHTML = '<div class="p-4">Firestore not available.</div>'; return; }
+    tableContainer.innerHTML = '<div class="p-4">Loading users...</div>';
+    try {
+      const snap = await db.collection('users').get();
+      const users = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+      renderTable(users);
+    } catch (e) {
+      tableContainer.innerHTML = '<div class="p-4 text-red-600">Failed to load users.</div>';
+    }
+  }
+
+  fetchUsers();
+});
+</script>
 </html>

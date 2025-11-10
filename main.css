@@ -18,6 +18,9 @@
     --two:#16a34a;
     
   }
+  .bg-green{
+    color: var(--two);
+  }
   .bg-coo{
     background:var(--two);
   }
