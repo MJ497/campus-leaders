@@ -48,7 +48,7 @@
           <a href="profile.html" data-section="forum" class="nav-item px-1 py-2 text-sm">Profile</a>
           <a href="about.html" data-section="courses" class="nav-item px-1 py-2 text-sm">About Us</a>
           <a href="contact.html" data-section="codelab" class="nav-item px-1 py-2 text-sm">Support</a>
-            <a href="database.html"  class="nav-item px-1 py-2 text-sm active-tab">Database</a>
+            <a href="database.html"  class="nav-item px-1 py-2 text-sm active-tab">Archive</a>
         </div>
       </div>
 
@@ -127,7 +127,21 @@
 
     <main class="pt-8 pb-8">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="text-2xl font-bold mb-6">User Database</h2>
+        <h2 class="text-2xl font-bold mb-6">User Archive</h2>
+        <div class="mb-6 flex flex-wrap gap-4 items-center">
+          <select id="filter-state" class="border rounded px-3 py-2 text-sm min-w-[160px]">
+            <option value="">Select State</option>
+          </select>
+          <select id="filter-school" class="border rounded px-3 py-2 text-sm min-w-[160px]" disabled>
+            <option value="">Select School</option>
+          </select>
+          <select id="filter-association" class="border rounded px-3 py-2 text-sm min-w-[160px]" disabled>
+            <option value="">Select Association</option>
+          </select>
+          <select id="filter-year" class="border rounded px-3 py-2 text-sm min-w-[120px]" disabled>
+            <option value="">Select Year</option>
+          </select>
+        </div>
         <div id="user-table-container" class="overflow-auto border rounded bg-white"></div>
       </div>
       <!-- Modal for user profile -->
@@ -495,48 +509,139 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script>
 // --- User Table & Modal Logic ---
+
 document.addEventListener('DOMContentLoaded', function() {
+  // --- Require sign-in ---
+  if (window.firebase && firebase.auth) {
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (!user) {
+        window.location.href = '/index.html';
+      } else {
+        // --- Show user profile picture in navbar ---
+        const userMenuBtn = document.getElementById('user-menu-button');
+        if (userMenuBtn) {
+          const avatarDiv = userMenuBtn.querySelector('.h-8.w-8');
+          if (avatarDiv) {
+            // Try to get photoURL from Firebase user
+            let imgUrl = user.photoURL;
+            // If not available, try to get from Firestore profile
+            if (!imgUrl && window.firebase && firebase.firestore) {
+              firebase.firestore().collection('users').doc(user.uid).get().then(doc => {
+                if (doc.exists && doc.data().imageUrl) {
+                  imgUrl = doc.data().imageUrl;
+                  avatarDiv.innerHTML = `<img src="${imgUrl}" class="h-8 w-8 rounded-full object-cover" alt="Profile">`;
+                }
+              });
+            } else if (imgUrl) {
+              avatarDiv.innerHTML = `<img src="${imgUrl}" class="h-8 w-8 rounded-full object-cover" alt="Profile">`;
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // --- Sign out logic (matches other pages) ---
+  try {
+    const ds = document.getElementById('desktop-sign-out');
+    if(ds){
+      ds.addEventListener('click', function(ev){
+        ev.preventDefault();
+        if(window.CampusLeaders && typeof window.CampusLeaders.signOutNow==='function') return window.CampusLeaders.signOutNow();
+        if(window.firebase && firebase.auth){
+          try{
+            firebase.auth().signOut().then(function(){ location.href='/index.html'; }).catch(function(){ location.href='/index.html'; });
+            return;
+          }catch(e){}
+        }
+        localStorage.removeItem('auth_token');
+        location.href='/index.html';
+      });
+    }
+  }catch(e){ /* ignore */ }
   // Firestore ref
   const db = window.firebase?.firestore?.();
   const tableContainer = document.getElementById('user-table-container');
   const modal = document.getElementById('user-modal');
   const modalContent = document.getElementById('user-modal-content');
   const closeModalBtn = document.getElementById('close-user-modal');
+  const stateSelect = document.getElementById('filter-state');
+  const schoolSelect = document.getElementById('filter-school');
+  const assocSelect = document.getElementById('filter-association');
+  const yearSelect = document.getElementById('filter-year');
 
-  // Helper: group users by state and school
-  function groupUsers(users) {
-    const grouped = {};
-    users.forEach(u => {
-      const state = u.stateName || 'Unknown State';
-      const school = u.schoolName || 'Unknown School';
-      if (!grouped[state]) grouped[state] = {};
-      if (!grouped[state][school]) grouped[state][school] = [];
-      grouped[state][school].push(u);
-    });
-    return grouped;
+  let allUsers = [];
+
+  // Helper: get unique values
+  function unique(arr) {
+    return Array.from(new Set(arr.filter(Boolean)));
+  }
+
+  // Populate State select
+  function populateStates(users) {
+    const states = unique(users.map(u => u.stateName));
+    stateSelect.innerHTML = '<option value="">Select State</option>' + states.map(s => `<option value="${s}">${s}</option>`).join('');
+    stateSelect.disabled = false;
+    schoolSelect.innerHTML = '<option value="">Select School</option>';
+    schoolSelect.disabled = true;
+    assocSelect.innerHTML = '<option value="">Select Association</option>';
+    assocSelect.disabled = true;
+    yearSelect.innerHTML = '<option value="">Select Year</option>';
+    yearSelect.disabled = true;
+  }
+
+  // Populate School select
+  function populateSchools(users, state) {
+    const schools = unique(users.filter(u => u.stateName === state).map(u => u.schoolName));
+    schoolSelect.innerHTML = '<option value="">Select School</option>' + schools.map(s => `<option value="${s}">${s}</option>`).join('');
+    schoolSelect.disabled = false;
+    assocSelect.innerHTML = '<option value="">Select Association</option>';
+    assocSelect.disabled = true;
+    yearSelect.innerHTML = '<option value="">Select Year</option>';
+    yearSelect.disabled = true;
+  }
+
+  // Populate Association select
+  function populateAssociations(users, state, school) {
+    const assocs = unique(users.filter(u => u.stateName === state && u.schoolName === school).map(u => u.association));
+    assocSelect.innerHTML = '<option value="">Select Association</option>' + assocs.map(a => `<option value="${a}">${a}</option>`).join('');
+    assocSelect.disabled = false;
+    yearSelect.innerHTML = '<option value="">Select Year</option>';
+    yearSelect.disabled = true;
+  }
+
+  // Populate Year select
+  function populateYears(users, state, school, assoc) {
+    const years = unique(users.filter(u => u.stateName === state && u.schoolName === school && u.association === assoc).map(u => u.yearHeld));
+    yearSelect.innerHTML = '<option value="">Select Year</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+    yearSelect.disabled = false;
+  }
+
+  // Filter users by selected criteria
+  function filterUsers(users, state, school, assoc, year) {
+    return users.filter(u =>
+      (!state || u.stateName === state) &&
+      (!school || u.schoolName === school) &&
+      (!assoc || u.association === assoc) &&
+      (!year || u.yearHeld === year)
+    );
   }
 
   // Render table
   function renderTable(users) {
-    const grouped = groupUsers(users);
-    let html = '<table class="min-w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">State</th><th class="p-2 text-left">School</th><th class="p-2 text-left">Name</th><th class="p-2 text-left">Position</th><th class="p-2 text-left">Association</th></tr></thead><tbody>';
-    Object.keys(grouped).sort().forEach(state => {
-      Object.keys(grouped[state]).sort().forEach(school => {
-        grouped[state][school].forEach(u => {
-          html += `<tr class="hover:bg-gray-100 cursor-pointer" data-uid="${u.uid}">
-            <td class="p-2">${state}</td>
-            <td class="p-2">${school}</td>
-            <td class="p-2 text-blue-700 underline">${(u.firstName||'') + ' ' + (u.lastName||'')}</td>
-            <td class="p-2">${u.position||''}</td>
-            <td class="p-2">${u.association||''}</td>
-          </tr>`;
-        });
-      });
+    let html = '<table class="min-w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">State</th><th class="p-2 text-left">School</th><th class="p-2 text-left">Name</th><th class="p-2 text-left">Position</th><th class="p-2 text-left">Association</th><th class="p-2 text-left">Year</th></tr></thead><tbody>';
+    users.forEach(u => {
+      html += `<tr class="hover:bg-gray-100 cursor-pointer" data-uid="${u.uid}">
+        <td class="p-2">${u.stateName||''}</td>
+        <td class="p-2">${u.schoolName||''}</td>
+        <td class="p-2 text-blue-700 underline">${(u.firstName||'') + ' ' + (u.lastName||'')}</td>
+        <td class="p-2">${u.position||''}</td>
+        <td class="p-2">${u.association||''}</td>
+        <td class="p-2">${u.yearHeld||''}</td>
+      </tr>`;
     });
     html += '</tbody></table>';
     tableContainer.innerHTML = html;
-
-    // Add click listeners to rows
     Array.from(tableContainer.querySelectorAll('tr[data-uid]')).forEach(row => {
       row.addEventListener('click', function() {
         const uid = row.getAttribute('data-uid');
@@ -578,12 +683,64 @@ document.addEventListener('DOMContentLoaded', function() {
     tableContainer.innerHTML = '<div class="p-4">Loading users...</div>';
     try {
       const snap = await db.collection('users').get();
-      const users = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-      renderTable(users);
+      allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+      populateStates(allUsers);
+      renderTable(allUsers);
     } catch (e) {
       tableContainer.innerHTML = '<div class="p-4 text-red-600">Failed to load users.</div>';
     }
   }
+
+  // Filter logic for selects
+  stateSelect.addEventListener('change', function() {
+    const state = stateSelect.value;
+    if (state) {
+      populateSchools(allUsers, state);
+      renderTable(filterUsers(allUsers, state));
+    } else {
+      schoolSelect.innerHTML = '<option value="">Select School</option>';
+      schoolSelect.disabled = true;
+      assocSelect.innerHTML = '<option value="">Select Association</option>';
+      assocSelect.disabled = true;
+      yearSelect.innerHTML = '<option value="">Select Year</option>';
+      yearSelect.disabled = true;
+      renderTable(allUsers);
+    }
+  });
+  schoolSelect.addEventListener('change', function() {
+    const state = stateSelect.value;
+    const school = schoolSelect.value;
+    if (school) {
+      populateAssociations(allUsers, state, school);
+      renderTable(filterUsers(allUsers, state, school));
+    } else {
+      assocSelect.innerHTML = '<option value="">Select Association</option>';
+      assocSelect.disabled = true;
+      yearSelect.innerHTML = '<option value="">Select Year</option>';
+      yearSelect.disabled = true;
+      renderTable(filterUsers(allUsers, state));
+    }
+  });
+  assocSelect.addEventListener('change', function() {
+    const state = stateSelect.value;
+    const school = schoolSelect.value;
+    const assoc = assocSelect.value;
+    if (assoc) {
+      populateYears(allUsers, state, school, assoc);
+      renderTable(filterUsers(allUsers, state, school, assoc));
+    } else {
+      yearSelect.innerHTML = '<option value="">Select Year</option>';
+      yearSelect.disabled = true;
+      renderTable(filterUsers(allUsers, state, school));
+    }
+  });
+  yearSelect.addEventListener('change', function() {
+    const state = stateSelect.value;
+    const school = schoolSelect.value;
+    const assoc = assocSelect.value;
+    const year = yearSelect.value;
+    renderTable(filterUsers(allUsers, state, school, assoc, year));
+  });
 
   fetchUsers();
 });
