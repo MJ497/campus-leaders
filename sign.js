@@ -548,16 +548,83 @@ async function waitForFirebaseSDK(timeoutMs = 5000) {
 })();
 
 // ---------- populate states & years (keeps your object) ----------
-Object.keys(stateSchools).sort().forEach(s => {
-  const opt = document.createElement('option');
-  opt.value = s; opt.textContent = s;
-  stateSelect.appendChild(opt);
-});
-const currentYear = new Date().getFullYear();
-for (let y = currentYear; y >= 1950; y--) {
-  const o = document.createElement('option'); o.value = y; o.textContent = y;
-  yearSelect.appendChild(o);
-}
+// ---------- populate states & years (robust, runs after DOM ready) ----------
+(function initStateSchoolAndYear() {
+  function setup() {
+    // DOM refs (may be defined earlier but re-query to be safe)
+    const stateSel = document.getElementById('state-select');
+    const schoolSel = document.getElementById('school-select');
+    const yearSel = document.getElementById('year-held');
+
+    if (!stateSel || !schoolSel || !yearSel) {
+      console.warn('State/school/year selects not found in DOM yet.');
+      return;
+    }
+
+    // Populate states (only once)
+    if (stateSel.options.length <= 1) { // leave the default "Select state" intact
+      Object.keys(stateSchools).sort().forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        stateSel.appendChild(opt);
+      });
+    }
+
+    // Populate year list (only once)
+    if (yearSel.options.length <= 1) {
+      const currentYear = new Date().getFullYear();
+      for (let y = currentYear; y >= 1950; y--) {
+        const o = document.createElement('option'); o.value = y; o.textContent = y;
+        yearSel.appendChild(o);
+      }
+    }
+
+    // Ensure school select has a default option and is disabled by default
+    schoolSel.innerHTML = '<option value="">Select school</option>';
+    schoolSel.disabled = true;
+
+    // Populate schools for a given state value
+    function populateSchoolsForState(state) {
+      schoolSel.innerHTML = '<option value="">Select school</option>';
+      if (state && stateSchools[state]) {
+        stateSchools[state].forEach(s => {
+          const opt = document.createElement('option'); opt.value = s; opt.textContent = s;
+          schoolSel.appendChild(opt);
+        });
+        schoolSel.disabled = false;
+      } else {
+        schoolSel.disabled = true;
+      }
+
+      // After changing school list, reload associations (keeps your behavior)
+      if (typeof loadAssociationsForSchool === 'function') {
+        try { loadAssociationsForSchool(); } catch (err) { console.warn('loadAssociationsForSchool error', err); }
+      }
+    }
+
+    // Attach change handler (avoid dupes)
+    stateSel.removeEventListener('change', stateSel._campusChangeHandler);
+    const handler = () => populateSchoolsForState(stateSel.value);
+    stateSel.addEventListener('change', handler);
+    // store reference so we can remove if needed
+    stateSel._campusChangeHandler = handler;
+
+    // If a state is preselected (e.g., from server or form repopulation), populate immediately
+    if (stateSel.value) {
+      populateSchoolsForState(stateSel.value);
+    }
+  }
+
+  // Run setup when DOM is ready (handles defer vs inline script cases)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setup);
+  } else {
+    // DOM already ready
+    setTimeout(setup, 0);
+  }
+})();
+
 
 // when state changes, populate schools
 stateSelect.addEventListener('change', () => {
@@ -842,6 +909,45 @@ signupForm && signupForm.addEventListener('submit', async (e) => {
     password: fd.get('password'),
     imageDataUrl: imageFileDataUrl || null
   };
+    // --- ensure association is persisted (local + Firestore) at signup time ---
+  (function ensureAssociationSavedAtSignup() {
+    try {
+      const typed = assocNewInput?.value?.trim();
+      const picked = assocSelect?.value?.trim();
+
+      // If the user typed a new association in the add input, prefer that
+      if (typed) {
+        // save locally if missing (keeps previous behavior)
+        const arr = JSON.parse(localStorage.getItem(STORAGE_ASSOC_KEY) || '[]');
+        if (!arr.includes(typed)) {
+          arr.push(typed);
+          localStorage.setItem(STORAGE_ASSOC_KEY, JSON.stringify(arr));
+        }
+        // update UI select so it reflects the new value
+        populateAssocSelectWithLocal();
+        assocSelect.value = typed;
+        // set payload association to typed value
+        payload.association = typed;
+
+        // attempt to persist to Firestore (non-blocking). This will wait for Firebase init if needed.
+        saveAssociationToFirestore(typed, { state: payload.state || null, school: payload.school || null })
+          .catch(err => console.warn('saveAssociationToFirestore uncaught error at signup:', err));
+      } else if (picked) {
+        // user selected an existing association from the select
+        payload.association = picked;
+        // ensure it's present in Firestore too (idempotent)
+        saveAssociationToFirestore(picked, { state: payload.state || null, school: payload.school || null })
+          .catch(err => console.warn('saveAssociationToFirestore uncaught error at signup:', err));
+      } else {
+        payload.association = '';
+      }
+    } catch (e) {
+      console.warn('ensureAssociationSavedAtSignup failed', e);
+      // fall back: keep whatever payload.association already is
+      payload.association = payload.association || '';
+    }
+  })();
+
 
   // Helper to show a modal offering login/reset options when email exists
   function showEmailExistsOptions(email, message) {
