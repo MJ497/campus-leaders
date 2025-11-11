@@ -16,7 +16,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-white text-gray-900 min-h-screen">
+<body class="bg-white text-gray-900 min-h-screen flex flex-col">
     <!-- Navigation -->
     <nav class="bg-white border-b border-gray-200  w-full z-10">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -81,10 +81,10 @@
             </div>
           </button>
 
-          <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200" role="menu" aria-hidden="true">
-         
-            <a id="desktop-sign-out" href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
-          </div>
+            <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200" role="menu" aria-hidden="true">
+          
+              <a id="desktop-sign-out" href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
+            </div>
         </div>
       </div>
     </div>
@@ -125,7 +125,7 @@
 
  
 
-    <main class="pt-8 pb-8">
+  <main class="pt-8 pb-8 flex-grow">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 class="text-2xl font-bold mb-6">User Archive</h2>
         <div class="mb-6 flex flex-wrap gap-4 items-center">
@@ -142,7 +142,7 @@
             <option value="">Select Year</option>
           </select>
         </div>
-        <div id="user-table-container" class="overflow-auto border rounded bg-white"></div>
+   <div id="user-table-container" class="overflow-auto border rounded bg-white hidden"></div>
       </div>
       <!-- Modal for user profile -->
       <div id="user-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
@@ -154,8 +154,8 @@
       </div>
     </main>
 
-    <footer class="bg-gray-900 text-white border-t border-gray-200 py-8 mt-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<footer class="bg-gray-900 text-white border-t border-gray-200 py-8 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
         <div>
           <h3 class="font-bold text-lg mb-4">Campus leaders Archive</h3>
@@ -197,226 +197,183 @@
     <script src="script.js" defer> 
     </script>
 
+
 <script>
-/* Mobile hamburger + nav behavior for your provided nav.
-   - Injects a hamburger button (visible on mobile).
-   - Creates a mobile menu that contains your nav links + user menu items.
-   - Toggles mobile search, user menu, and mobile nav; closes on outside click or ESC.
-   - Mobile search toggling fixed so it reliably opens/closes on small screens.
-*/
+    // combined-updated.js
+// Replace your page's existing <script> JS with this file (no HTML changes required).
+// Includes: nav/mobile menu behavior, user menu, sign-out, user avatar loading,
+// and the fully fixed User Table & Select cascade + modal logic.
+// Table remains hidden until all selects are chosen. Normalizes common Firestore field names.
 
-document.addEventListener('DOMContentLoaded', () => {
-  const nav = document.querySelector('nav.bg-white');
-  if (!nav) return;
+document.addEventListener('DOMContentLoaded', function () {
+  ///////////////////////
+  // NAV / MOBILE MENU //
+  ///////////////////////
+  (function setupNavAndMenus() {
+    const nav = document.querySelector('nav.bg-white');
+    if (!nav) return;
 
-  // Elements
-  const leftArea = nav.querySelector('.flex.items-center.space-x-6') || nav.querySelector('div > .flex');
-  const desktopLinksContainer = nav.querySelector('div.hidden.md\\:flex') || nav.querySelector('.md\\:flex');
-  const userMenu = document.getElementById('user-menu');
-  const userMenuButton = document.getElementById('user-menu-button');
+    const leftArea = nav.querySelector('.flex.items-center.space-x-6') || nav.querySelector('div > .flex');
+    const desktopLinksContainer = nav.querySelector('div.hidden.md\\:flex') || nav.querySelector('.md\\:flex');
+    const userMenu = document.getElementById('user-menu');
+    const userMenuButton = document.getElementById('user-menu-button');
+    const mobileSearch = document.getElementById('mobile-search');
+    const mobileSearchClose = document.getElementById('mobile-search-close');
 
-  const mobileSearch = document.getElementById('mobile-search');
-  const mobileSearchClose = document.getElementById('mobile-search-close');
-
-  // Create hamburger button (inserted near logo/links)
-  const burgerBtn = document.createElement('button');
-  burgerBtn.id = 'mobile-menu-button';
-  burgerBtn.className = 'md:hidden p-2 rounded bghover';
-  burgerBtn.type = 'button';
-  burgerBtn.setAttribute('aria-expanded', 'false');
-  burgerBtn.setAttribute('aria-controls', 'mobile-menu');
-  burgerBtn.innerHTML = '<i class="fas fa-bars" aria-hidden="true"></i>';
-  if (leftArea) leftArea.insertBefore(burgerBtn, desktopLinksContainer || leftArea.firstChild);
-
-  // Build mobile menu container (hidden by default)
-  const mobileMenu = document.createElement('div');
-  mobileMenu.id = 'mobile-menu';
-  mobileMenu.className = 'hidden md:hidden border-t border-gray-200 bg-white px-4 py-3';
-  mobileMenu.setAttribute('aria-hidden', 'true');
-
-  // Populate mobile menu with desktop links (clone)
-  if (desktopLinksContainer) {
-    const clonedLinks = desktopLinksContainer.cloneNode(true);
-    clonedLinks.className = clonedLinks.className.replace(/\bhidden\b/g, '').replace(/\bmd\:flex\b/g, '');
-    const linksWrapper = document.createElement('div');
-    linksWrapper.className = 'space-y-2';
-    Array.from(clonedLinks.querySelectorAll('a')).forEach(a => {
-      const a2 = a.cloneNode(true);
-      a2.classList.add('block', 'px-2', 'py-2', 'text-sm');
-      linksWrapper.appendChild(a2);
-    });
-    mobileMenu.appendChild(linksWrapper);
-  }
-
-  // Clone user menu into mobile menu
-  if (userMenu) {
-    const userTitle = document.createElement('div');
-    userTitle.className = 'mt-3 mb-1 text-xs text-gray-500 uppercase';
-    userTitle.textContent = 'Account';
-    mobileMenu.appendChild(userTitle);
-
-    const ul = document.createElement('div');
-    ul.className = 'space-y-1';
-    Array.from(userMenu.querySelectorAll('a')).forEach(a => {
-      const ap = a.cloneNode(true);
-      ap.classList.remove('block');
-      ap.classList.add('block', 'px-2', 'py-2', 'text-sm');
-      ul.appendChild(ap);
-    });
-    mobileMenu.appendChild(ul);
-  }
-
-  // Insert mobileMenu right after nav content
-  nav.appendChild(mobileMenu);
-
-    const mobileSearchBtn = document.getElementById('mobile-search-btn');
-      mobileSearchBtn && mobileSearchBtn.addEventListener('click', ()=>{
-        const ms = document.getElementById('mobile-search');
-        ms && ms.classList.toggle('hidden');
-      });
-      document.getElementById('mobile-search-close')?.addEventListener('click', ()=>{
-        document.getElementById('mobile-search')?.classList.add('hidden');
-      });
-
-  // helper: toggle element visibility with aria attributes
-  function setVisible(el, visible) {
-    if (!el) return;
-    if (visible) {
-      el.classList.remove('hidden');
-      el.setAttribute('aria-hidden', 'false');
-    } else {
-      try {
-        if (el.contains(document.activeElement)) {
-          if (burgerBtn && typeof burgerBtn.focus === 'function') burgerBtn.focus();
-          else document.body.focus && document.body.focus();
-        }
-      } catch (e) {}
-      el.classList.add('hidden');
-      el.setAttribute('aria-hidden', 'true');
-    }
-  }
-
-  // Toggle mobile menu
-  function toggleMobileMenu() {
-    const open = !mobileMenu.classList.contains('hidden');
-    setVisible(mobileMenu, open ? false : true);
-    burgerBtn.setAttribute('aria-expanded', String(open ? false : true));
-    const icon = burgerBtn.querySelector('i');
-    if (icon) icon.className = open ? 'fas fa-bars' : 'fas fa-times';
-    if (!open) {
-      if (mobileSearch && !mobileSearch.classList.contains('hidden')) {
-        setVisible(mobileSearch, false);
-      }
-      if (userMenu && !userMenu.classList.contains('hidden')) {
-        userMenu.classList.add('hidden');
-        userMenuButton && userMenuButton.setAttribute('aria-expanded', 'false');
-      }
-    }
-  }
-
-  burgerBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleMobileMenu();
-  });
-
-  // Close mobile menu when a mobile menu link is clicked
-  mobileMenu.addEventListener('click', (ev) => {
-    const a = ev.target.closest && ev.target.closest('a');
-    if (a) {
-      const text = (a.textContent || '').trim().toLowerCase();
-      if (/sign\s*out/.test(text)) {
-        ev.preventDefault();
-        if (window.CampusLeaders && typeof window.CampusLeaders.signOutNow === 'function') {
-          window.CampusLeaders.signOutNow();
-        } else if (typeof auth !== 'undefined' && auth && typeof auth.signOut === 'function') {
-          auth.signOut().then(() => { window.location.href = '/index.html'; }).catch(() => { window.location.href = '/index.html'; });
-        } else {
-          localStorage.removeItem('auth_token');
-          window.location.href = '/index.html';
-        }
-        setVisible(mobileMenu, false);
-        burgerBtn.setAttribute('aria-expanded', 'false');
-        const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
-        return;
-      }
-      setVisible(mobileMenu, false);
+    // create/insert burger if not already present
+    let burgerBtn = document.getElementById('mobile-menu-button');
+    if (!burgerBtn) {
+      burgerBtn = document.createElement('button');
+      burgerBtn.id = 'mobile-menu-button';
+      burgerBtn.className = 'md:hidden p-2 rounded bghover';
+      burgerBtn.type = 'button';
       burgerBtn.setAttribute('aria-expanded', 'false');
-      const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
+      burgerBtn.setAttribute('aria-controls', 'mobile-menu');
+      burgerBtn.innerHTML = '<i class="fas fa-bars" aria-hidden="true"></i>';
+      if (leftArea) leftArea.insertBefore(burgerBtn, desktopLinksContainer || leftArea.firstChild);
     }
-  });
 
-  // --- MOBILE SEARCH: reliable toggle wiring (fixed) ---
-  // The mobile search button simply toggles the hidden class on #mobile-search.
-  // We stop propagation to prevent the document click listener from immediately closing it.
-  if (mobileSearchBtn && mobileSearch) {
-    mobileSearchBtn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      const isHidden = mobileSearch.classList.contains('hidden');
-      setVisible(mobileSearch, isHidden);
-      mobileSearchBtn.setAttribute('aria-expanded', String(isHidden));
+    // build mobileMenu container if not present
+    let mobileMenu = document.getElementById('mobile-menu');
+    if (!mobileMenu) {
+      mobileMenu = document.createElement('div');
+      mobileMenu.id = 'mobile-menu';
+      mobileMenu.className = 'hidden md:hidden border-t border-gray-200 bg-white px-4 py-3';
+      mobileMenu.setAttribute('aria-hidden', 'true');
 
-      // If opening search, focus input and close other menus
-      if (isHidden) {
-        mobileSearch.querySelector('input')?.focus();
-        setVisible(mobileMenu, false);
-        burgerBtn.setAttribute('aria-expanded', 'false');
-        const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
-        if (userMenu) { userMenu.classList.add('hidden'); userMenuButton && userMenuButton.setAttribute('aria-expanded','false'); }
+      if (desktopLinksContainer) {
+        const clonedLinks = desktopLinksContainer.cloneNode(true);
+        clonedLinks.className = clonedLinks.className.replace(/\bhidden\b/g, '').replace(/\bmd\:flex\b/g, '');
+        const linksWrapper = document.createElement('div');
+        linksWrapper.className = 'space-y-2';
+        Array.from(clonedLinks.querySelectorAll('a')).forEach(a => {
+          const a2 = a.cloneNode(true);
+          a2.classList.add('block', 'px-2', 'py-2', 'text-sm');
+          linksWrapper.appendChild(a2);
+        });
+        mobileMenu.appendChild(linksWrapper);
       }
-    });
 
-    // Close button in the search bar
+      if (userMenu) {
+        const userTitle = document.createElement('div');
+        userTitle.className = 'mt-3 mb-1 text-xs text-gray-500 uppercase';
+        userTitle.textContent = 'Account';
+        mobileMenu.appendChild(userTitle);
+
+        const ul = document.createElement('div');
+        ul.className = 'space-y-1';
+        Array.from(userMenu.querySelectorAll('a')).forEach(a => {
+          const ap = a.cloneNode(true);
+          ap.classList.remove('block');
+          ap.classList.add('block', 'px-2', 'py-2', 'text-sm');
+          ul.appendChild(ap);
+        });
+        mobileMenu.appendChild(ul);
+      }
+
+      nav.appendChild(mobileMenu);
+    }
+
+    // Mobile search button wiring
+    const mobileSearchBtn = document.getElementById('mobile-search-btn');
+    if (mobileSearchBtn) {
+      mobileSearchBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const isHidden = mobileSearch.classList.contains('hidden');
+        if (isHidden) {
+          mobileSearch.classList.remove('hidden');
+          mobileSearchBtn.setAttribute('aria-expanded', 'true');
+          // focus input if present
+          mobileSearch.querySelector('input')?.focus();
+        } else {
+          mobileSearch.classList.add('hidden');
+          mobileSearchBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
     if (mobileSearchClose) {
       mobileSearchClose.addEventListener('click', (ev) => {
         ev.stopPropagation();
-        setVisible(mobileSearch, false);
-        mobileSearchBtn.setAttribute('aria-expanded', 'false');
+        mobileSearch.classList.add('hidden');
+        mobileSearchBtn && mobileSearchBtn.setAttribute('aria-expanded', 'false');
       });
     }
 
-    // Prevent clicks inside the search area from bubbling up and being treated as "outside click"
-    mobileSearch.addEventListener('click', (ev) => {
-      ev.stopPropagation();
+    // helper visibility toggler
+    function setVisible(el, visible) {
+      if (!el) return;
+      if (visible) {
+        el.classList.remove('hidden');
+        el.setAttribute('aria-hidden', 'false');
+      } else {
+        try {
+          if (el.contains(document.activeElement)) {
+            burgerBtn && typeof burgerBtn.focus === 'function' && burgerBtn.focus();}
+            else{ document.body.focus && document.body.focus();}
+          }
+        
+        catch (e) { /* ignore */ }
+        el.classList.add('hidden');
+        el.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function toggleMobileMenu() {
+      const open = !mobileMenu.classList.contains('hidden');
+      setVisible(mobileMenu, open ? false : true);
+      burgerBtn.setAttribute('aria-expanded', String(open ? false : true));
+      const icon = burgerBtn.querySelector('i');
+      if (icon) icon.className = open ? 'fas fa-bars' : 'fas fa-times';
+      if (!open) {
+        if (mobileSearch && !mobileSearch.classList.contains('hidden')) setVisible(mobileSearch, false);
+        if (userMenu && !userMenu.classList.contains('hidden')) { userMenu.classList.add('hidden'); userMenuButton && userMenuButton.setAttribute('aria-expanded','false'); }
+      }
+    }
+
+    burgerBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleMobileMenu(); });
+
+    mobileMenu.addEventListener('click', (ev) => {
+      const a = ev.target.closest && ev.target.closest('a');
+      if (a) {
+        const text = (a.textContent || '').trim().toLowerCase();
+        if (/sign\s*out/.test(text)) {
+          ev.preventDefault();
+          if (window.CampusLeaders && typeof window.CampusLeaders.signOutNow === 'function') {
+            window.CampusLeaders.signOutNow();
+          } else if (typeof firebase !== 'undefined' && firebase && firebase.auth) {
+            try { firebase.auth().signOut().then(()=> window.location.href = '/index.html').catch(()=> window.location.href = '/index.html'); } catch(e){ localStorage.removeItem('auth_token'); window.location.href = '/index.html'; }
+          } else { localStorage.removeItem('auth_token'); window.location.href = '/index.html'; }
+          setVisible(mobileMenu, false);
+          burgerBtn.setAttribute('aria-expanded', 'false');
+          const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
+          return;
+        }
+        setVisible(mobileMenu, false);
+        burgerBtn.setAttribute('aria-expanded', 'false');
+        const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
+      }
     });
-  }
 
-  // wire document click to close menus when clicking outside (works with stopPropagation above)
-  document.addEventListener('click', (e) => {
-    const target = e.target;
-    if (
-      mobileMenu.contains(target) ||
-      burgerBtn.contains(target) ||
-      (userMenu && userMenu.contains(target)) ||
-      (userMenuButton && userMenuButton.contains(target)) ||
-      (mobileSearch && mobileSearch.contains(target)) ||
-      (mobileSearchBtn && mobileSearchBtn.contains(target))
-    ) return;
+    // document click closes menus/search if click outside
+    document.addEventListener('click', (e) => {
+      const target = e.target;
+      if (
+        mobileMenu.contains(target) ||
+        burgerBtn.contains(target) ||
+        (userMenu && userMenu.contains(target)) ||
+        (userMenuButton && userMenuButton.contains(target)) ||
+        (mobileSearch && mobileSearch.contains(target)) ||
+        (mobileSearchBtn && mobileSearchBtn.contains(target))
+      ) return;
 
-    if (!mobileMenu.classList.contains('hidden')) {
-      setVisible(mobileMenu, false);
-      burgerBtn.setAttribute('aria-expanded', 'false');
-      const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
-    }
-    if (userMenu && !userMenu.classList.contains('hidden')) {
-      try { if (userMenu.contains(document.activeElement)) userMenuButton && userMenuButton.focus(); } catch(e){}
-      userMenu.classList.add('hidden');
-      userMenuButton && userMenuButton.setAttribute('aria-expanded', 'false');
-    }
-    if (mobileSearch && !mobileSearch.classList.contains('hidden')) {
-      setVisible(mobileSearch, false);
-      mobileSearchBtn && mobileSearchBtn.setAttribute('aria-expanded', 'false');
-    }
-  });
-
-  // ESC key closes everything
-  document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape') {
       if (!mobileMenu.classList.contains('hidden')) {
         setVisible(mobileMenu, false);
         burgerBtn.setAttribute('aria-expanded', 'false');
         const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
       }
       if (userMenu && !userMenu.classList.contains('hidden')) {
+        try { if (userMenu.contains(document.activeElement)) userMenuButton && userMenuButton.focus(); } catch(e){}
         userMenu.classList.add('hidden');
         userMenuButton && userMenuButton.setAttribute('aria-expanded', 'false');
       }
@@ -424,325 +381,378 @@ document.addEventListener('DOMContentLoaded', () => {
         setVisible(mobileSearch, false);
         mobileSearchBtn && mobileSearchBtn.setAttribute('aria-expanded', 'false');
       }
-    }
-  });
+    });
 
-  // Wire existing user menu button (desktop) to toggle menu
-  if (userMenuButton && userMenu) {
-    userMenuButton.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      const isHidden = userMenu.classList.contains('hidden');
-      if (isHidden) {
-        userMenu.classList.remove('hidden');
-        userMenuButton.setAttribute('aria-expanded', 'true');
-        setVisible(mobileMenu, false);
-        setVisible(mobileSearch, false);
-        burgerBtn.setAttribute('aria-expanded', 'false');
-        const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
-      } else {
-        userMenu.classList.add('hidden');
-        userMenuButton.setAttribute('aria-expanded', 'false');
+    // ESC closes
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') {
+        if (!mobileMenu.classList.contains('hidden')) { setVisible(mobileMenu, false); burgerBtn.setAttribute('aria-expanded','false'); const icon = burgerBtn.querySelector('i'); if (icon) icon.className='fas fa-bars'; }
+        if (userMenu && !userMenu.classList.contains('hidden')) { userMenu.classList.add('hidden'); userMenuButton && userMenuButton.setAttribute('aria-expanded','false'); }
+        if (mobileSearch && !mobileSearch.classList.contains('hidden')) { setVisible(mobileSearch, false); mobileSearchBtn && mobileSearchBtn.setAttribute('aria-expanded','false'); }
       }
     });
-  }
 
-  // Accessibility: focus first link when opening mobile menu
-  burgerBtn.addEventListener('keydown', (ev) => {
-    if ((ev.key === 'Enter' || ev.key === ' ') && !mobileMenu.classList.contains('hidden')) {
-      const firstLink = mobileMenu.querySelector('a');
-      if (firstLink) firstLink.focus();
-    }
-  });
-
-  // If the mobile menu exists and window is resized to desktop, ensure mobile-menu hidden
-  window.addEventListener('resize', () => {
-    if (window.innerWidth >= 768) {
-      setVisible(mobileMenu, false);
-      burgerBtn.setAttribute('aria-expanded', 'false');
-      const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
-      if (mobileSearch) setVisible(mobileSearch, false);
-      if (userMenu) { userMenu.classList.add('hidden'); userMenuButton && userMenuButton.setAttribute('aria-expanded','false'); }
-    }
-  });
-  
-  // wire desktop sign out link (if present)
-  try{
-    const ds = document.getElementById('desktop-sign-out');
-    if(ds){ ds.addEventListener('click', (ev)=>{ ev.preventDefault(); if(window.CampusLeaders && typeof window.CampusLeaders.signOutNow==='function') return window.CampusLeaders.signOutNow(); if(window.firebase && firebase.auth){ try{ firebase.auth().signOut().then(()=> location.href='/index.html').catch(()=> location.href='/index.html'); return; }catch(e){} } localStorage.removeItem('auth_token'); location.href='/index.html'; }); }
-  }catch(e){ /* ignore */ }
-});
-</script>
-
-  <script>
-    // Ensure user menu toggles open when the avatar/button is clicked and closes on outside click
-    (function(){
-      const btn = document.getElementById('user-menu-button');
-      const menu = document.getElementById('user-menu');
-      if(!btn || !menu) return;
-      btn.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        const isHidden = menu.classList.contains('hidden');
-        if(isHidden){
-          menu.classList.remove('hidden');
-          btn.setAttribute('aria-expanded','true');
+    // userMenu toggle (desktop)
+    if (userMenuButton && userMenu) {
+      userMenuButton.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const isHidden = userMenu.classList.contains('hidden');
+        if (isHidden) {
+          userMenu.classList.remove('hidden');
+          userMenuButton.setAttribute('aria-expanded', 'true');
+          setVisible(mobileMenu, false);
+          setVisible(mobileSearch, false);
+          burgerBtn.setAttribute('aria-expanded', 'false');
+          const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
         } else {
-          menu.classList.add('hidden');
-          btn.setAttribute('aria-expanded','false');
+          userMenu.classList.add('hidden');
+          userMenuButton.setAttribute('aria-expanded', 'false');
         }
       });
-      // close on outside click
-      document.addEventListener('click', (ev)=>{
-        if(!menu.contains(ev.target) && !btn.contains(ev.target)){
-          if(!menu.classList.contains('hidden')){
-            menu.classList.add('hidden');
-            btn.setAttribute('aria-expanded','false');
-          }
-        }
-      });
-      // close on Escape
-      document.addEventListener('keydown', (ev)=>{ if(ev.key === 'Escape'){ if(!menu.classList.contains('hidden')){ menu.classList.add('hidden'); btn.setAttribute('aria-expanded','false'); } } });
-    })();
-  </script>
+    }
 
+    // accessibility: focus first link in mobile menu when opened via keyboard
+    burgerBtn.addEventListener('keydown', (ev) => {
+      if ((ev.key === 'Enter' || ev.key === ' ') && !mobileMenu.classList.contains('hidden')) {
+        const firstLink = mobileMenu.querySelector('a');
+        if (firstLink) firstLink.focus();
+      }
+    });
+
+    // hide mobile things on resize
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 768) {
+        setVisible(mobileMenu, false);
+        burgerBtn.setAttribute('aria-expanded', 'false');
+        const icon = burgerBtn.querySelector('i'); if (icon) icon.className = 'fas fa-bars';
+        if (mobileSearch) setVisible(mobileSearch, false);
+        if (userMenu) { userMenu.classList.add('hidden'); userMenuButton && userMenuButton.setAttribute('aria-expanded','false'); }
+      }
+    });
+
+    // wire desktop sign out link (if present)
+    try {
+      const ds = document.getElementById('desktop-sign-out');
+      if (ds) {
+        ds.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          if (window.CampusLeaders && typeof window.CampusLeaders.signOutNow === 'function') return window.CampusLeaders.signOutNow();
+          if (window.firebase && firebase.auth) {
+            try { firebase.auth().signOut().then(()=> location.href = '/index.html').catch(()=> location.href = '/index.html'); return; } catch(e) {}
+          }
+          localStorage.removeItem('auth_token');
+          location.href = '/index.html';
+        });
+      }
+    } catch (e) { /* ignore */ }
+  })();
+
+  //////////////////////////////////
+  // USER TABLES / SELECTS / MODAL //
+  //////////////////////////////////
+  (function setupUserArchive() {
+    // Firestore ref
+    const db = window.firebase?.firestore?.();
+    const tableContainer = document.getElementById('user-table-container');
+    const modal = document.getElementById('user-modal');
+    const modalContent = document.getElementById('user-modal-content');
+    const closeModalBtn = document.getElementById('close-user-modal');
+    const stateSelect = document.getElementById('filter-state');
+    const schoolSelect = document.getElementById('filter-school');
+    const assocSelect = document.getElementById('filter-association');
+    const yearSelect = document.getElementById('filter-year');
+
+    if (!stateSelect || !schoolSelect || !assocSelect || !yearSelect || !tableContainer) {
+      console.warn('User archive selects or container missing from DOM.');
+      return;
+    }
+
+    // helper: unique & clean
+    function unique(arr) {
+      return Array.from(new Set(arr.filter(Boolean)));
+    }
+
+    // normalize different field names from Firestore documents
+    function normalizeUser(doc) {
+      const data = (typeof doc.data === 'function') ? doc.data() : doc;
+      const get = (...keys) => {
+        for (const k of keys) {
+          if (data == null) break;
+          if (k in data && data[k] != null && data[k] !== '') return String(data[k]).trim();
+          const lk = k.toLowerCase();
+          if (lk in data && data[lk] != null && data[lk] !== '') return String(data[lk]).trim();
+        }
+        return '';
+      };
+      return {
+        uid: doc.id || get('uid'),
+        firstName: get('firstName', 'first_name', 'first'),
+        lastName: get('lastName', 'last_name', 'last'),
+        email: get('email'),
+        phone: get('phone', 'phoneNumber', 'phone_number'),
+        imageUrl: get('imageUrl', 'photoURL', 'photo_url'),
+        stateName: get('stateName', 'state', 'state_name'),
+        schoolName: get('schoolName', 'school', 'school_name'),
+        association: get('association', 'assoc', 'group'),
+        yearHeld: get('yearHeld', 'year', 'year_held'),
+        position: get('position'),
+        bio: get('bio')
+      };
+    }
+
+    // escape for attribute values
+    function escapeHtmlAttr(s) {
+      return String(s).replace(/"/g, '&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // population functions (sorted)
+    function populateStates(users) {
+      try {
+        const states = unique(users.map(u => u.stateName)).filter(Boolean).sort((a,b)=> a.localeCompare(b));
+        console.log('populateStates →', states);
+        stateSelect.innerHTML = '<option value="">Select State</option>' + states.map(s => `<option value="${escapeHtmlAttr(s)}">${s}</option>`).join('');
+        stateSelect.disabled = false;
+        // reset downstream
+        schoolSelect.innerHTML = '<option value="">Select School</option>'; schoolSelect.disabled = true;
+        assocSelect.innerHTML = '<option value="">Select Association</option>'; assocSelect.disabled = true;
+        yearSelect.innerHTML = '<option value="">Select Year</option>'; yearSelect.disabled = true;
+      } catch (err) {
+        console.error('populateStates error', err);
+      }
+    }
+
+    function populateSchools(users, state) {
+      const schools = unique(users.filter(u => u.stateName === state).map(u => u.schoolName)).filter(Boolean).sort((a,b)=> a.localeCompare(b));
+      console.log('populateSchools for', state, '->', schools);
+      schoolSelect.innerHTML = '<option value="">Select School</option>' + schools.map(s => `<option value="${escapeHtmlAttr(s)}">${s}</option>`).join('');
+      schoolSelect.disabled = false;
+      assocSelect.innerHTML = '<option value="">Select Association</option>'; assocSelect.disabled = true;
+      yearSelect.innerHTML = '<option value="">Select Year</option>'; yearSelect.disabled = true;
+    }
+
+    function populateAssociations(users, state, school) {
+      const assocs = unique(users.filter(u => u.stateName === state && u.schoolName === school).map(u => u.association)).filter(Boolean).sort((a,b)=> a.localeCompare(b));
+      console.log('populateAssociations for', state, school, '->', assocs);
+      assocSelect.innerHTML = '<option value="">Select Association</option>' + assocs.map(a => `<option value="${escapeHtmlAttr(a)}">${a}</option>`).join('');
+      assocSelect.disabled = false;
+      yearSelect.innerHTML = '<option value="">Select Year</option>'; yearSelect.disabled = true;
+    }
+
+    function populateYears(users, state, school, assoc) {
+      const years = unique(users.filter(u => u.stateName === state && u.schoolName === school && u.association === assoc).map(u => u.yearHeld)).filter(Boolean).sort((a,b)=> a.localeCompare(b));
+      console.log('populateYears for', state, school, assoc, '->', years);
+      yearSelect.innerHTML = '<option value="">Select Year</option>' + years.map(y => `<option value="${escapeHtmlAttr(y)}">${y}</option>`).join('');
+      yearSelect.disabled = false;
+    }
+
+    // Filter helper
+    function filterUsers(users, state, school, assoc, year) {
+      return users.filter(u =>
+        (!state || u.stateName === state) &&
+        (!school || u.schoolName === school) &&
+        (!assoc || u.association === assoc) &&
+        (!year || u.yearHeld === year)
+      );
+    }
+
+    // Render table rows
+    function renderTable(users) {
+      if (!tableContainer) return;
+      const cols = ['State','School','Name','Position','Association','Year'];
+      let html = `<table class="min-w-full text-sm"><thead class="bg-gray-50"><tr>${cols.map(c=>`<th class="p-2 text-left">${c}</th>`).join('')}</tr></thead><tbody>`;
+      users.forEach(u => {
+        const name = `${u.firstName||''} ${u.lastName||''}`.trim();
+        html += `<tr class="hover:bg-gray-100 cursor-pointer" data-uid="${escapeHtmlAttr(u.uid||'')}">
+          <td class="p-2">${u.stateName||''}</td>
+          <td class="p-2">${u.schoolName||''}</td>
+          <td class="p-2 text-blue-700 underline">${escapeHtmlAttr(name)}</td>
+          <td class="p-2">${escapeHtmlAttr(u.position||'')}</td>
+          <td class="p-2">${escapeHtmlAttr(u.association||'')}</td>
+          <td class="p-2">${escapeHtmlAttr(u.yearHeld||'')}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      tableContainer.innerHTML = html;
+
+      // attach click listeners for modal
+      Array.from(tableContainer.querySelectorAll('tr[data-uid]')).forEach(row => {
+        row.addEventListener('click', function() {
+          const uid = row.getAttribute('data-uid');
+          const user = allUsers.find(u => u.uid === uid);
+          if (user) showUserModal(user);
+        });
+      });
+    }
+
+    // modal display
+    function showUserModal(user) {
+      let html = `<div class="flex items-center gap-4 mb-4">
+        <div class="h-20 w-20 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
+          ${user.imageUrl ? `<img src="${escapeHtmlAttr(user.imageUrl)}" class="h-full w-full object-cover" alt="${escapeHtmlAttr((user.firstName||'')+' '+(user.lastName||''))}">` : '<i class="fas fa-user text-2xl text-gray-400"></i>'}
+        </div>
+        <div>
+          <div class="font-bold text-lg">${escapeHtmlAttr((user.firstName||'') + ' ' + (user.lastName||''))}</div>
+          <div class="text-sm text-gray-600">${escapeHtmlAttr(user.schoolName||'')} ${escapeHtmlAttr(user.yearHeld||'')}</div>
+          <div class="text-xs text-gray-500 mt-1">${escapeHtmlAttr(user.position||'')} ${user.stateName ? '• ' + escapeHtmlAttr(user.stateName) : ''} ${user.association ? '• ' + escapeHtmlAttr(user.association) : ''}</div>
+          <div class="text-xs text-gray-500 mt-2">${user.email ? `<a href="mailto:${escapeHtmlAttr(user.email)}" class="text-blue-600">${escapeHtmlAttr(user.email)}</a>` : ''} ${user.phone ? ` • <a href="tel:${escapeHtmlAttr(user.phone)}" class="text-blue-600">${escapeHtmlAttr(user.phone)}</a>` : ''}</div>
+        </div>
+      </div>`;
+      if (user.bio) html += `<div class="mb-3 text-sm text-gray-700"><strong>Bio:</strong> ${escapeHtmlAttr(user.bio).replace(/\n/g,'<br>')}</div>`;
+      modalContent.innerHTML = html;
+      modal.classList.remove('hidden'); modal.classList.add('flex');
+    }
+
+    if (closeModalBtn) {
+      closeModalBtn.addEventListener('click', function() {
+        modal.classList.add('hidden'); modal.classList.remove('flex'); modalContent.innerHTML = '';
+      });
+    }
+
+    // keep users list in memory
+    let allUsers = [];
+
+    // Normalized fetch users; logs helpful debugging info
+    async function fetchUsers() {
+      if (!db) {
+        tableContainer.innerHTML = '<div class="p-4">Firestore not available.</div>';
+        console.warn('fetchUsers: db is not available (firebase.firestore() returned undefined)');
+        return;
+      }
+      tableContainer.innerHTML = '<div class="p-4">Loading users...</div>';
+      try {
+        const snap = await db.collection('users').get();
+        allUsers = snap.docs.map(d => normalizeUser(d));
+        console.log('fetchUsers loaded documents:', allUsers.length, allUsers.slice(0,6));
+        populateStates(allUsers);
+        // ensure table remains hidden until selection complete
+        tableContainer.classList.add('hidden');
+      } catch (e) {
+        console.error('Failed to load users', e);
+        tableContainer.innerHTML = '<div class="p-4 text-red-600">Failed to load users.</div>';
+      }
+    }
+
+    // Only show results when all selects are chosen
+    function updateFilteredResults() {
+      const state = stateSelect.value;
+      const school = schoolSelect.value;
+      const assoc = assocSelect.value;
+      const year = yearSelect.value;
+
+      if (state && school && assoc && year) {
+        const filtered = filterUsers(allUsers, state, school, assoc, year);
+        renderTable(filtered);
+        tableContainer.classList.remove('hidden');
+      } else {
+        tableContainer.classList.add('hidden');
+      }
+    }
+
+    // Select event listeners (sequence enforced)
+    stateSelect.addEventListener('change', function() {
+      const state = stateSelect.value;
+      if (state) {
+        populateSchools(allUsers, state);
+        assocSelect.innerHTML = '<option value="">Select Association</option>'; assocSelect.disabled = true;
+        yearSelect.innerHTML = '<option value="">Select Year</option>'; yearSelect.disabled = true;
+      } else {
+        schoolSelect.innerHTML = '<option value="">Select School</option>'; schoolSelect.disabled = true;
+        assocSelect.innerHTML = '<option value="">Select Association</option>'; assocSelect.disabled = true;
+        yearSelect.innerHTML = '<option value="">Select Year</option>'; yearSelect.disabled = true;
+      }
+      updateFilteredResults();
+    });
+
+    schoolSelect.addEventListener('change', function() {
+      const state = stateSelect.value;
+      const school = schoolSelect.value;
+      if (school) {
+        populateAssociations(allUsers, state, school);
+        yearSelect.innerHTML = '<option value="">Select Year</option>'; yearSelect.disabled = true;
+      } else {
+        assocSelect.innerHTML = '<option value="">Select Association</option>'; assocSelect.disabled = true;
+        yearSelect.innerHTML = '<option value="">Select Year</option>'; yearSelect.disabled = true;
+      }
+      updateFilteredResults();
+    });
+
+    assocSelect.addEventListener('change', function() {
+      const state = stateSelect.value;
+      const school = schoolSelect.value;
+      const assoc = assocSelect.value;
+      if (assoc) {
+        populateYears(allUsers, state, school, assoc);
+      } else {
+        yearSelect.innerHTML = '<option value="">Select Year</option>'; yearSelect.disabled = true;
+      }
+      updateFilteredResults();
+    });
+
+    yearSelect.addEventListener('change', function() {
+      updateFilteredResults();
+    });
+
+    // Require sign-in and optionally show avatar; also fetch users after auth check
+    if (window.firebase && firebase.auth) {
+      firebase.auth().onAuthStateChanged(function(user) {
+        if (!user) {
+          // keep original behaviour: redirect to index
+          window.location.href = '/index.html';
+        } else {
+          // Show user profile picture in navbar if available
+          const userMenuBtn = document.getElementById('user-menu-button');
+          if (userMenuBtn) {
+            const avatarDiv = userMenuBtn.querySelector('.h-8.w-8, .h-8.w-8.rounded-full, .h-8.w-8.rounded');
+            // fallback: look for child div
+            const fallback = userMenuBtn.querySelector('.h-8.w-8') || userMenuBtn.querySelector('div') || userMenuBtn;
+            const target = avatarDiv || fallback;
+            if (target) {
+              let imgUrl = user.photoURL || '';
+              if (!imgUrl && window.firebase && firebase.firestore) {
+                firebase.firestore().collection('users').doc(user.uid).get().then(doc => {
+                  if (doc.exists && doc.data() && doc.data().imageUrl) {
+                    imgUrl = doc.data().imageUrl;
+                    try { target.innerHTML = `<img src="${escapeHtmlAttr(imgUrl)}" class="h-8 w-8 rounded-full object-cover" alt="Profile">`; } catch(e){ target.innerHTML = '<i class="fas fa-user"></i>'; }
+                  }
+                }).catch(()=>{/* ignore */});
+              } else if (imgUrl) {
+                try { target.innerHTML = `<img src="${escapeHtmlAttr(imgUrl)}" class="h-8 w-8 rounded-full object-cover" alt="Profile">`; } catch(e){ target.innerHTML = '<i class="fas fa-user"></i>'; }
+              }
+            }
+          }
+
+          // fetch users after we have a valid user; keeps consistent with other pages
+          fetchUsers();
+        }
+      });
+    } else {
+      // if firebase/auth not available, still try to fetch users (in case data is public)
+      fetchUsers();
+    }
+
+    // sign out button wiring (duplicate-safe)
+    try {
+      const ds = document.getElementById('desktop-sign-out');
+      if (ds) {
+        ds.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          if (window.CampusLeaders && typeof window.CampusLeaders.signOutNow === 'function') return window.CampusLeaders.signOutNow();
+          if (window.firebase && firebase.auth) {
+            try { firebase.auth().signOut().then(function(){ location.href='/index.html'; }).catch(function(){ location.href='/index.html'; }); return; } catch(e) {}
+          }
+          localStorage.removeItem('auth_token');
+          location.href = '/index.html';
+        });
+      }
+    } catch (e) { /* ignore */ }
+
+  })();
+
+}); // end DOMContentLoaded
+
+</script>
 
 </body>
 
-<script>
-// --- User Table & Modal Logic ---
 
-document.addEventListener('DOMContentLoaded', function() {
-  // --- Require sign-in ---
-  if (window.firebase && firebase.auth) {
-    firebase.auth().onAuthStateChanged(function(user) {
-      if (!user) {
-        window.location.href = '/index.html';
-      } else {
-        // --- Show user profile picture in navbar ---
-        const userMenuBtn = document.getElementById('user-menu-button');
-        if (userMenuBtn) {
-          const avatarDiv = userMenuBtn.querySelector('.h-8.w-8');
-          if (avatarDiv) {
-            // Try to get photoURL from Firebase user
-            let imgUrl = user.photoURL;
-            // If not available, try to get from Firestore profile
-            if (!imgUrl && window.firebase && firebase.firestore) {
-              firebase.firestore().collection('users').doc(user.uid).get().then(doc => {
-                if (doc.exists && doc.data().imageUrl) {
-                  imgUrl = doc.data().imageUrl;
-                  avatarDiv.innerHTML = `<img src="${imgUrl}" class="h-8 w-8 rounded-full object-cover" alt="Profile">`;
-                }
-              });
-            } else if (imgUrl) {
-              avatarDiv.innerHTML = `<img src="${imgUrl}" class="h-8 w-8 rounded-full object-cover" alt="Profile">`;
-            }
-          }
-        }
-      }
-    });
-  }
-
-  // --- Sign out logic (matches other pages) ---
-  try {
-    const ds = document.getElementById('desktop-sign-out');
-    if(ds){
-      ds.addEventListener('click', function(ev){
-        ev.preventDefault();
-        if(window.CampusLeaders && typeof window.CampusLeaders.signOutNow==='function') return window.CampusLeaders.signOutNow();
-        if(window.firebase && firebase.auth){
-          try{
-            firebase.auth().signOut().then(function(){ location.href='/index.html'; }).catch(function(){ location.href='/index.html'; });
-            return;
-          }catch(e){}
-        }
-        localStorage.removeItem('auth_token');
-        location.href='/index.html';
-      });
-    }
-  }catch(e){ /* ignore */ }
-  // Firestore ref
-  const db = window.firebase?.firestore?.();
-  const tableContainer = document.getElementById('user-table-container');
-  const modal = document.getElementById('user-modal');
-  const modalContent = document.getElementById('user-modal-content');
-  const closeModalBtn = document.getElementById('close-user-modal');
-  const stateSelect = document.getElementById('filter-state');
-  const schoolSelect = document.getElementById('filter-school');
-  const assocSelect = document.getElementById('filter-association');
-  const yearSelect = document.getElementById('filter-year');
-
-  let allUsers = [];
-
-  // Helper: get unique values
-  function unique(arr) {
-    return Array.from(new Set(arr.filter(Boolean)));
-  }
-
-  // Populate State select
-  function populateStates(users) {
-    const states = unique(users.map(u => u.stateName));
-    stateSelect.innerHTML = '<option value="">Select State</option>' + states.map(s => `<option value="${s}">${s}</option>`).join('');
-    stateSelect.disabled = false;
-    schoolSelect.innerHTML = '<option value="">Select School</option>';
-    schoolSelect.disabled = true;
-    assocSelect.innerHTML = '<option value="">Select Association</option>';
-    assocSelect.disabled = true;
-    yearSelect.innerHTML = '<option value="">Select Year</option>';
-    yearSelect.disabled = true;
-  }
-
-  // Populate School select
-  function populateSchools(users, state) {
-    const schools = unique(users.filter(u => u.stateName === state).map(u => u.schoolName));
-    schoolSelect.innerHTML = '<option value="">Select School</option>' + schools.map(s => `<option value="${s}">${s}</option>`).join('');
-    schoolSelect.disabled = false;
-    assocSelect.innerHTML = '<option value="">Select Association</option>';
-    assocSelect.disabled = true;
-    yearSelect.innerHTML = '<option value="">Select Year</option>';
-    yearSelect.disabled = true;
-  }
-
-  // Populate Association select
-  function populateAssociations(users, state, school) {
-    const assocs = unique(users.filter(u => u.stateName === state && u.schoolName === school).map(u => u.association));
-    assocSelect.innerHTML = '<option value="">Select Association</option>' + assocs.map(a => `<option value="${a}">${a}</option>`).join('');
-    assocSelect.disabled = false;
-    yearSelect.innerHTML = '<option value="">Select Year</option>';
-    yearSelect.disabled = true;
-  }
-
-  // Populate Year select
-  function populateYears(users, state, school, assoc) {
-    const years = unique(users.filter(u => u.stateName === state && u.schoolName === school && u.association === assoc).map(u => u.yearHeld));
-    yearSelect.innerHTML = '<option value="">Select Year</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
-    yearSelect.disabled = false;
-  }
-
-  // Filter users by selected criteria
-  function filterUsers(users, state, school, assoc, year) {
-    return users.filter(u =>
-      (!state || u.stateName === state) &&
-      (!school || u.schoolName === school) &&
-      (!assoc || u.association === assoc) &&
-      (!year || u.yearHeld === year)
-    );
-  }
-
-  // Render table
-  function renderTable(users) {
-    let html = '<table class="min-w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">State</th><th class="p-2 text-left">School</th><th class="p-2 text-left">Name</th><th class="p-2 text-left">Position</th><th class="p-2 text-left">Association</th><th class="p-2 text-left">Year</th></tr></thead><tbody>';
-    users.forEach(u => {
-      html += `<tr class="hover:bg-gray-100 cursor-pointer" data-uid="${u.uid}">
-        <td class="p-2">${u.stateName||''}</td>
-        <td class="p-2">${u.schoolName||''}</td>
-        <td class="p-2 text-blue-700 underline">${(u.firstName||'') + ' ' + (u.lastName||'')}</td>
-        <td class="p-2">${u.position||''}</td>
-        <td class="p-2">${u.association||''}</td>
-        <td class="p-2">${u.yearHeld||''}</td>
-      </tr>`;
-    });
-    html += '</tbody></table>';
-    tableContainer.innerHTML = html;
-    Array.from(tableContainer.querySelectorAll('tr[data-uid]')).forEach(row => {
-      row.addEventListener('click', function() {
-        const uid = row.getAttribute('data-uid');
-        const user = users.find(u => u.uid === uid);
-        if (user) showUserModal(user);
-      });
-    });
-  }
-
-  // Show modal with user profile
-  function showUserModal(user) {
-    let html = `<div class="flex items-center gap-4 mb-4">
-      <div class="h-20 w-20 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
-        ${user.imageUrl ? `<img src="${user.imageUrl}" class="h-full w-full object-cover" alt="${user.firstName||''} ${user.lastName||''}">` : '<i class="fas fa-user text-2xl text-gray-400"></i>'}
-      </div>
-      <div>
-        <div class="font-bold text-lg">${(user.firstName||'') + ' ' + (user.lastName||'')}</div>
-        <div class="text-sm text-gray-600">${user.schoolName||''} ${user.yearHeld||''}</div>
-        <div class="text-xs text-gray-500 mt-1">${user.position||''} ${user.stateName ? '• ' + user.stateName : ''} ${user.association ? '• ' + user.association : ''}</div>
-        <div class="text-xs text-gray-500 mt-2">${user.email ? `<a href="mailto:${user.email}" class="text-blue-600">${user.email}</a>` : ''} ${user.phone ? ` • <a href="tel:${user.phone}" class="text-blue-600">${user.phone}</a>` : ''}</div>
-      </div>
-    </div>`;
-    if (user.bio) html += `<div class="mb-3 text-sm text-gray-700"><strong>Bio:</strong> ${user.bio.replace(/\n/g,'<br>')}</div>`;
-    modalContent.innerHTML = html;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-  }
-
-  // Close modal
-  closeModalBtn.addEventListener('click', function() {
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-    modalContent.innerHTML = '';
-  });
-
-  // Fetch users from Firestore
-  async function fetchUsers() {
-    if (!db) { tableContainer.innerHTML = '<div class="p-4">Firestore not available.</div>'; return; }
-    tableContainer.innerHTML = '<div class="p-4">Loading users...</div>';
-    try {
-      const snap = await db.collection('users').get();
-      allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-      populateStates(allUsers);
-      renderTable(allUsers);
-    } catch (e) {
-      tableContainer.innerHTML = '<div class="p-4 text-red-600">Failed to load users.</div>';
-    }
-  }
-
-  // Filter logic for selects
-  stateSelect.addEventListener('change', function() {
-    const state = stateSelect.value;
-    if (state) {
-      populateSchools(allUsers, state);
-      renderTable(filterUsers(allUsers, state));
-    } else {
-      schoolSelect.innerHTML = '<option value="">Select School</option>';
-      schoolSelect.disabled = true;
-      assocSelect.innerHTML = '<option value="">Select Association</option>';
-      assocSelect.disabled = true;
-      yearSelect.innerHTML = '<option value="">Select Year</option>';
-      yearSelect.disabled = true;
-      renderTable(allUsers);
-    }
-  });
-  schoolSelect.addEventListener('change', function() {
-    const state = stateSelect.value;
-    const school = schoolSelect.value;
-    if (school) {
-      populateAssociations(allUsers, state, school);
-      renderTable(filterUsers(allUsers, state, school));
-    } else {
-      assocSelect.innerHTML = '<option value="">Select Association</option>';
-      assocSelect.disabled = true;
-      yearSelect.innerHTML = '<option value="">Select Year</option>';
-      yearSelect.disabled = true;
-      renderTable(filterUsers(allUsers, state));
-    }
-  });
-  assocSelect.addEventListener('change', function() {
-    const state = stateSelect.value;
-    const school = schoolSelect.value;
-    const assoc = assocSelect.value;
-    if (assoc) {
-      populateYears(allUsers, state, school, assoc);
-      renderTable(filterUsers(allUsers, state, school, assoc));
-    } else {
-      yearSelect.innerHTML = '<option value="">Select Year</option>';
-      yearSelect.disabled = true;
-      renderTable(filterUsers(allUsers, state, school));
-    }
-  });
-  yearSelect.addEventListener('change', function() {
-    const state = stateSelect.value;
-    const school = schoolSelect.value;
-    const assoc = assocSelect.value;
-    const year = yearSelect.value;
-    renderTable(filterUsers(allUsers, state, school, assoc, year));
-  });
-
-  fetchUsers();
-});
-</script>
 </html>

@@ -597,44 +597,111 @@ function populateAssocSelectWithLocal() {
 }
 populateAssocSelectWithLocal();
 
-assocAddBtn.addEventListener('click', () => {
-  assocNewInput.classList.toggle('hidden');
-  if (!assocNewInput.classList.contains('hidden')) assocNewInput.focus();
-});
-assocNewInput.addEventListener('keydown', async (e) => {
-  if (e.key === 'Enter') {
+// ---------- Robust association saving and UI handlers (updated) ----------
+
+/**
+ * Wait until Firebase init is ready (USE_FIREBASE && db) or timeout.
+ * Resolves true if ready, false on timeout.
+ */
+async function waitForFirebaseReady(timeoutMs = 8000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (typeof USE_FIREBASE !== 'undefined' && USE_FIREBASE && typeof db !== 'undefined' && db) {
+      return true;
+    }
+    await new Promise(r => setTimeout(r, 120));
+  }
+  return false;
+}
+
+/**
+ * Save association to Firestore when Firebase becomes available.
+ * If Firebase is not ready it will retry a few times.
+ */
+async function saveAssociationToFirestore(name, opts = {}) {
+  if (!name) return;
+  const stateName = opts.state ?? (typeof stateSelect !== 'undefined' ? stateSelect.value || null : null);
+  const schoolName = opts.school ?? (typeof schoolSelect !== 'undefined' ? schoolSelect.value || null : null);
+
+  const ready = await waitForFirebaseReady(8000);
+  if (!ready) {
+    // Retry later (non-blocking) — useful if user added association before Firebase finished initializing
+    console.warn('Firebase not ready yet — will retry saving association in 2s.');
+    setTimeout(() => saveAssociationToFirestore(name, opts), 2000);
+    return;
+  }
+
+  try {
+    await db.collection('associations').add({
+      name,
+      stateName: stateName || null,
+      schoolName: schoolName || null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('Association saved to Firestore:', name);
+  } catch (err) {
+    console.warn('Failed to save association to Firestore:', err);
+    // Optional: retry once after short delay on transient errors
+    setTimeout(() => {
+      db.collection && db.collection('associations').add({
+        name,
+        stateName: stateName || null,
+        schoolName: schoolName || null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => console.log('Retry save succeeded for association:', name))
+        .catch(e => console.warn('Retry failed for saveAssociationToFirestore:', e));
+    }, 3000);
+  }
+}
+
+// Replace assocAddBtn click handler (keeps same toggle UX)
+try {
+  assocAddBtn && assocAddBtn.addEventListener('click', () => {
+    assocNewInput.classList.toggle('hidden');
+    if (!assocNewInput.classList.contains('hidden')) assocNewInput.focus();
+  });
+} catch (e) { console.warn('assocAddBtn wiring error', e); }
+
+// Handle Enter on assocNewInput: save locally + attempt Firestore persist
+try {
+  assocNewInput && assocNewInput.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return;
     e.preventDefault();
+
     const name = assocNewInput.value.trim();
-    if (!name) return alert('Please type the association name');
+    if (!name) {
+      alert('Please type the association name');
+      return;
+    }
+
+    // Save locally (existing behavior)
     const arr = JSON.parse(localStorage.getItem(STORAGE_ASSOC_KEY) || '[]');
     if (!arr.includes(name)) {
       arr.push(name);
       localStorage.setItem(STORAGE_ASSOC_KEY, JSON.stringify(arr));
     }
+
+    // Refresh the select (local first)
     populateAssocSelectWithLocal();
     assocSelect.value = name;
     assocNewInput.value = '';
     assocNewInput.classList.add('hidden');
 
-    // optionally persist association in Firestore (non-essential)
-    if (USE_FIREBASE && db) {
-      try {
-        const stateName = stateSelect.value || null;
-        const schoolName = schoolSelect.value || null;
-        await db.collection('associations').add({
-          name,
-          stateName,
-          schoolName,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } catch (err) { console.warn('Failed to save association in Firestore:', err); }
-    }
-  }
-});
+    // Attempt to persist to Firestore (non-blocking). This will wait for Firebase init if needed.
+    saveAssociationToFirestore(name, { state: stateSelect?.value || null, school: schoolSelect?.value || null })
+      .catch(err => console.warn('saveAssociationToFirestore uncaught error:', err));
+
+    // If school is selected, reload associations from Firestore to include any server-side entries
+    try { loadAssociationsForSchool(); } catch (err) { /* ignore */ }
+  });
+} catch (e) { console.warn('assocNewInput wiring error', e); }
+
+// small accessibility: close assoc input on escape
+assocNewInput && assocNewInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') assocNewInput.classList.add('hidden'); });
 
 // image preview
 let imageFileDataUrl = null;
-imageInput.addEventListener('change', async (e) => {
+imageInput && imageInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) {
     if (imagePreview) { imagePreview.classList.add('hidden'); imagePreview.src = ''; }
@@ -655,12 +722,12 @@ imageInput.addEventListener('change', async (e) => {
 });
 
 // tab toggles (preserve your UI)
-tabSignup.addEventListener('click', () => {
+tabSignup && tabSignup.addEventListener('click', () => {
   signupForm.classList.remove('hidden'); loginForm.classList.add('hidden');
   tabSignup.classList.add('bg-two','text-white'); tabLogin.classList.remove('bg-two','text-white');
   panelTitle.textContent = 'Sign up';
 });
-tabLogin.addEventListener('click', () => {
+tabLogin && tabLogin.addEventListener('click', () => {
   signupForm.classList.add('hidden'); loginForm.classList.remove('hidden');
   tabLogin.classList.add('bg-two','text-white'); tabSignup.classList.remove('bg-two','text-white');
   panelTitle.textContent = 'Login';
@@ -747,10 +814,10 @@ async function loadAssociationsForSchool() {
     });
   } catch (err) { console.warn('Failed loading associations from Firestore', err); }
 }
-schoolSelect.addEventListener('change', loadAssociationsForSchool);
+schoolSelect && schoolSelect.addEventListener('change', loadAssociationsForSchool);
 
 // ---------- SIGNUP handler (email + password ONLY) ----------
-signupForm.addEventListener('submit', async (e) => {
+signupForm && signupForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const fd = new FormData(signupForm);
   const required = ['firstName','lastName','username','email','phone','state','school','password','confirmPassword'];
@@ -903,7 +970,7 @@ signupForm.addEventListener('submit', async (e) => {
 });
 
 // ---------- LOGIN handler (email + password only) ----------
-loginForm.addEventListener('submit', async (e) => {
+loginForm && loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const fd = new FormData(loginForm);
   const email = fd.get('loginId')?.toString().trim();
@@ -1054,9 +1121,6 @@ function createModal() {
   return { el: overlay, showLoading, showSuccess, showError, hide, addActionButton };
 }
 
-// small accessibility: close assoc input on escape
-assocNewInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') assocNewInput.classList.add('hidden'); });
-
 // expose helper
 window.CampusLeaders = window.CampusLeaders || {};
 window.CampusLeaders.signOutNow = signOutNow;
@@ -1072,5 +1136,3 @@ window.CampusLeaders.ADMIN_EMAILS = ADMIN_EMAILS.map(e=>e && e.toLowerCase()).fi
    - Requires firebase (compat) to be loaded & initialized before this script runs.
    - If you use your existing sign.js that sets USE_FIREBASE, it will use firebase when available.
 */
-
-
