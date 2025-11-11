@@ -817,6 +817,7 @@ async function loadAssociationsForSchool() {
 schoolSelect && schoolSelect.addEventListener('change', loadAssociationsForSchool);
 
 // ---------- SIGNUP handler (email + password ONLY) ----------
+// ---------- SIGNUP handler (payment first, with email-exists pre-check + friendly handling) ----------
 signupForm && signupForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const fd = new FormData(signupForm);
@@ -842,85 +843,124 @@ signupForm && signupForm.addEventListener('submit', async (e) => {
     imageDataUrl: imageFileDataUrl || null
   };
 
-  // Use Firebase flow when available
+  // Helper to show a modal offering login/reset options when email exists
+  function showEmailExistsOptions(email, message) {
+    modal.showError(message || 'An account already exists for this email.');
+    modal.addActionButton('Go to Login', () => { window.location.href = '/login.html'; });
+    modal.addActionButton('Reset Password', async () => {
+      if (!USE_FIREBASE || !auth) {
+        modal.showError('Password reset requires Firebase to be available.');
+        return;
+      }
+      try {
+        modal.showLoading('Sending reset email...');
+        await auth.sendPasswordResetEmail(email);
+        modal.showSuccess('Password reset email sent. Check your inbox.');
+      } catch (err) {
+        console.error('sendPasswordResetEmail error', err);
+        modal.showError('Could not send reset email: ' + (err && err.message ? err.message : 'Please try again later.'));
+      }
+    });
+  }
+
+  // If Firebase available, pre-check if email already has an account (avoids charging)
+  if (USE_FIREBASE && auth && db && typeof auth.fetchSignInMethodsForEmail === 'function') {
+    try {
+      modal.showLoading('Checking email...');
+      const methods = await auth.fetchSignInMethodsForEmail(payload.email);
+      modal.hide();
+      if (methods && methods.length > 0) {
+        // Email already registered — show friendly instructions and stop
+        showEmailExistsOptions(payload.email, 'This email already has an account — please login or reset your password.');
+        return;
+      }
+    } catch (err) {
+      // Non-fatal: if the pre-check fails (network/etc), we continue to payment but log the error
+      console.warn('Email pre-check failed, proceeding to payment:', err);
+      modal.hide();
+    }
+  }
+
+  // If Firebase is available, use pay-first -> create user flow
   if (USE_FIREBASE && auth && db) {
     try {
-      modal.showLoading('Creating account...');
-      // create Firebase auth user
-      const userCred = await auth.createUserWithEmailAndPassword(payload.email, payload.password);
-      const user = userCred.user;
-      const uid = user.uid;
-
-      // upload image to Uploadcare (optional)
-      let imageUrl = null;
-      if (imageInput.files && imageInput.files[0]) {
-        try {
-          modal.showLoading('Uploading profile image...');
-          imageUrl = await uploadImageToUploadcare(imageInput.files[0]);
-        } catch (err) {
-          console.warn('Uploadcare upload failed (continuing):', err);
-        }
-      }
-
-      // update Firebase user profile so displayName and photoURL are set
-      try {
-        const displayName = `${payload.firstName} ${payload.lastName}`;
-        await user.updateProfile({ displayName, photoURL: imageUrl || null });
-      } catch (err) {
-        console.warn('updateProfile failed:', err);
-      }
-
-      // try to find state/school docs (non-blocking)
-      let stateDoc = null, schoolDoc = null;
-      try { stateDoc = await findStateDocByName(payload.state); } catch(e){/*ignore*/ }
-      try { schoolDoc = await findSchoolDocByName(payload.school); } catch(e){/*ignore*/ }
-
-      // create user document in Firestore
-      modal.showLoading('Saving profile...');
-      const userDoc = {
-        uid,
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        username: payload.username || null,
-        email: payload.email,
-        phone: payload.phone || null,
-        stateName: payload.state || null,
-        schoolName: payload.school || null,
-        stateId: stateDoc ? stateDoc.id : null,
-        schoolId: schoolDoc ? schoolDoc.id : null,
-        association: payload.association || null,
-        position: payload.position || null,
-        positionDetails: payload.positionDetails || null,
-        yearHeld: payload.yearHeld || null,
-        imageUrl: imageUrl || null,
-        paymentStatus: 'pending',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await db.collection('users').doc(uid).set(userDoc);
-
-      // After user is created and profile saved, open Paystack and attach uid in metadata
       modal.showLoading('Opening payment window...');
-      payWithPaystack(payload.email, REGISTRATION_FEE_NGN, { uid }, async (resp) => {
-        try {
-          modal.showLoading('Verifying payment and saving...');
-          // record payment
-          await db.collection('payments').add({
-            uid,
-            email: payload.email,
-            amount: REGISTRATION_FEE_NGN,
-            reference: resp.reference,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          // update user
-          await db.collection('users').doc(uid).update({ paymentStatus: 'paid', paymentReference: resp.reference });
+      payWithPaystack(payload.email, REGISTRATION_FEE_NGN, { userEmail: payload.email }, async (resp) => {
+        modal.showLoading('Payment succeeded — creating account...');
 
-          // optionally notify your server endpoint
+        let uid = null;
+        try {
+          // create Firebase auth user
+          const userCred = await auth.createUserWithEmailAndPassword(payload.email, payload.password);
+          const user = userCred.user;
+          uid = user.uid;
+
+          // upload image (optional)
+          let imageUrl = null;
+          if (imageInput.files && imageInput.files[0]) {
+            try {
+              modal.showLoading('Uploading profile image...');
+              imageUrl = await uploadImageToUploadcare(imageInput.files[0]);
+            } catch (err) {
+              console.warn('Uploadcare upload failed (continuing):', err);
+            }
+          }
+
+          // update Firebase profile
+          try {
+            const displayName = `${payload.firstName} ${payload.lastName}`;
+            await user.updateProfile({ displayName, photoURL: imageUrl || null });
+          } catch (err) { console.warn('updateProfile failed:', err); }
+
+          // find state/school docs (non-blocking)
+          let stateDoc = null, schoolDoc = null;
+          try { stateDoc = await findStateDocByName(payload.state); } catch(e){/*ignore*/ }
+          try { schoolDoc = await findSchoolDocByName(payload.school); } catch(e){/*ignore*/ }
+
+          // create user document with paymentStatus: 'paid'
+          modal.showLoading('Saving profile...');
+          const userDoc = {
+            uid,
+            firstName: payload.firstName,
+            lastName: payload.lastName,
+            username: payload.username || null,
+            email: payload.email,
+            phone: payload.phone || null,
+            stateName: payload.state || null,
+            schoolName: payload.school || null,
+            stateId: stateDoc ? stateDoc.id : null,
+            schoolId: schoolDoc ? schoolDoc.id : null,
+            association: payload.association || null,
+            position: payload.position || null,
+            positionDetails: payload.positionDetails || null,
+            yearHeld: payload.yearHeld || null,
+            imageUrl: imageUrl || null,
+            paymentStatus: 'paid',
+            paymentReference: resp.reference || null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          await db.collection('users').doc(uid).set(userDoc);
+
+          // record payment
+          try {
+            await db.collection('payments').add({
+              uid,
+              email: payload.email,
+              amount: REGISTRATION_FEE_NGN,
+              reference: resp.reference,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } catch (err) {
+            console.warn('Failed to record payment in payments collection:', err);
+          }
+
+          // optional server notify
           if (SAVE_USER_ENDPOINT && SAVE_USER_ENDPOINT !== '/api/auth/register') {
             try {
               await fetch(SAVE_USER_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reference: resp.reference, uid })
+                body: JSON.stringify({ reference: resp.reference, uid, email: payload.email })
               });
             } catch (err) {
               console.warn('Optional SAVE_USER_ENDPOINT failed:', err);
@@ -928,23 +968,58 @@ signupForm && signupForm.addEventListener('submit', async (e) => {
           }
 
           modal.showSuccess('Registration complete — payment verified.');
-          modal.addActionButton('Go to dashboard', () => window.location.href = '/dashboard.html');
+          modal.addActionButton('Go to dashboard', () => { window.location.href = '/dashboard.html'; });
+
         } catch (err) {
-          console.error('Payment verification/save error:', err);
-          modal.showError('Payment succeeded but verification/save failed. Check admin logs.');
+          console.error('Error creating account after payment:', err);
+
+          // If email already in use (rare if pre-check succeeded), show friendly options and include payment reference
+          if (err && err.code === 'auth/email-already-in-use') {
+            const message = 'This email is already in use. If you intended to join, please login or reset your password. If you already paid, contact support with reference: ' + (resp && resp.reference ? resp.reference : 'unknown');
+            showEmailExistsOptions(payload.email, message);
+            // Also try to persist a minimal payment record for reconciliation
+            try {
+              await db.collection('payments').add({
+                uid: null,
+                email: payload.email,
+                amount: REGISTRATION_FEE_NGN,
+                reference: resp.reference || null,
+                note: 'Payment succeeded but account creation failed (email already exists). Manual reconciliation required.',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+            } catch (e) {
+              console.warn('Failed to save fallback payment record:', e);
+            }
+            return;
+          }
+
+          const msg = (err && err.message) ? err.message : 'Failed to create account after payment. Contact support with payment reference: ' + (resp && resp.reference ? resp.reference : 'unknown');
+          modal.showError(msg);
+
+          // fallback: save minimal payment record for reconciliation
+          try {
+            await db.collection('payments').add({
+              uid: uid || null,
+              email: payload.email,
+              amount: REGISTRATION_FEE_NGN,
+              reference: resp.reference || null,
+              note: 'Payment succeeded but account creation failed — manual reconciliation may be required.',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } catch (e) { console.warn('Failed to save fallback payment record:', e); }
         }
       }, () => {
-        modal.showError('Payment window closed. You can retry to complete registration.');
+        modal.showError('Payment window closed. Registration not completed.');
       });
 
     } catch (err) {
-      console.error('Firebase signup error:', err);
-      modal.showError(err && err.message ? err.message : 'Signup failed');
+      console.error('Unexpected error during signup/payment flow:', err);
+      modal.showError(err && err.message ? err.message : 'Signup failed. Please try again.');
     }
     return;
   }
 
-  // If Firebase not available, fall back to original pay-first then server-save flow
+  // Non-Firebase fallback remains the same (pay-first -> server-save)
   payWithPaystack(payload.email, REGISTRATION_FEE_NGN, { user: payload }, async (resp) => {
     try {
       const res = await fetch(SAVE_USER_ENDPOINT, {
@@ -966,8 +1041,8 @@ signupForm && signupForm.addEventListener('submit', async (e) => {
   }, () => {
     alert('Payment window closed. You can retry to complete registration.');
   });
-
 });
+
 
 // ---------- LOGIN handler (email + password only) ----------
 loginForm && loginForm.addEventListener('submit', async (e) => {

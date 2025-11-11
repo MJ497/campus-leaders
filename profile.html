@@ -65,19 +65,48 @@
             <i class="fas fa-search"></i>
           </button> -->
 
-          <div class="relative">
-            <button id="user-menu-button" class="flex items-center p-1 rounded-full focus:outline-none" aria-expanded="false" aria-haspopup="true">
-              <div id="nav-avatar" class="h-8 w-8 rounded-full bg-linear text-white flex items-center justify-center">
-                <i class="fas fa-user"></i>
-              </div>
-            </button>
-              <span id="nav-username" class="hidden sm:inline-block ml-2 text-sm font-medium text-gray-700"></span>
-
-            <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200" role="menu" aria-hidden="true">
-             
-             <a id="desktop-sign-out" href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
+              <div class="relative">
+          <button id="user-menu-button" class="flex items-center p-1 rounded-full focus:outline-none" aria-expanded="false" aria-haspopup="true">
+            <div id="nav-avatar" class="h-8 w-8 rounded-full bg-linear text-white flex items-center justify-center">
+              <i class="fas fa-user"></i>
             </div>
+          </button>
+
+          <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white z-50 shadow-lg rounded-md border border-gray-200" role="menu" aria-hidden="true">
+         
+            <a id="desktop-sign-out" href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
           </div>
+        </div>
+           <script>
+    // Ensure user menu toggles open when the avatar/button is clicked and closes on outside click
+    (function(){
+      const btn = document.getElementById('user-menu-button');
+      const menu = document.getElementById('user-menu');
+      if(!btn || !menu) return;
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const isHidden = menu.classList.contains('hidden');
+        if(isHidden){
+          menu.classList.remove('hidden');
+          btn.setAttribute('aria-expanded','true');
+        } else {
+          menu.classList.add('hidden');
+          btn.setAttribute('aria-expanded','false');
+        }
+      });
+      // close on outside click
+      document.addEventListener('click', (ev)=>{
+        if(!menu.contains(ev.target) && !btn.contains(ev.target)){
+          if(!menu.classList.contains('hidden')){
+            menu.classList.add('hidden');
+            btn.setAttribute('aria-expanded','false');
+          }
+        }
+      });
+      // close on Escape
+      document.addEventListener('keydown', (ev)=>{ if(ev.key === 'Escape'){ if(!menu.classList.contains('hidden')){ menu.classList.add('hidden'); btn.setAttribute('aria-expanded','false'); } } });
+    })();
+  </script>
         </div>
 
       </div>

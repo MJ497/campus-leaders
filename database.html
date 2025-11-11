@@ -86,6 +86,36 @@
               <a id="desktop-sign-out" href="#" class="block px-4 py-2 bghover" role="menuitem">Sign Out</a>
             </div>
         </div>
+         <script>
+    // Ensure user menu toggles open when the avatar/button is clicked and closes on outside click
+    (function(){
+      const btn = document.getElementById('user-menu-button');
+      const menu = document.getElementById('user-menu');
+      if(!btn || !menu) return;
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const isHidden = menu.classList.contains('hidden');
+        if(isHidden){
+          menu.classList.remove('hidden');
+          btn.setAttribute('aria-expanded','true');
+        } else {
+          menu.classList.add('hidden');
+          btn.setAttribute('aria-expanded','false');
+        }
+      });
+      // close on outside click
+      document.addEventListener('click', (ev)=>{
+        if(!menu.contains(ev.target) && !btn.contains(ev.target)){
+          if(!menu.classList.contains('hidden')){
+            menu.classList.add('hidden');
+            btn.setAttribute('aria-expanded','false');
+          }
+        }
+      });
+      // close on Escape
+      document.addEventListener('keydown', (ev)=>{ if(ev.key === 'Escape'){ if(!menu.classList.contains('hidden')){ menu.classList.add('hidden'); btn.setAttribute('aria-expanded','false'); } } });
+    })();
+  </script>
       </div>
     </div>
   </div>
