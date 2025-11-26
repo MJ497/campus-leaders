@@ -1,4 +1,5 @@
-// news-loader.js - loads top news items into elements with class "trending-news-list"
+// news-loader.js (updated)
+// loads top news items into elements with class "trending-news-list"
 // Also populates #news-carousel (full-width hero) with an image/title/subtitle carousel which links to news pages.
 
 (async function(){
@@ -78,18 +79,15 @@
       imgWrap.appendChild(img);
       a.appendChild(imgWrap);
 
-  // gradient + text overlay (bottom-left) - ensure it's above the hero overlay
-  // Full-width overlay that covers the hero; inner text wrapper sits at the bottom and is full width.
-  // The outer overlay is pointer-events-none so it doesn't block control clicks; the inner text wrapper is pointer-events-auto
-  const overlay = document.createElement('div');
-  overlay.className = 'absolute inset-0 p-4 sm:p-6 text-white z-30 pointer-events-none';
-  overlay.innerHTML = `
-    <div class="w-90 h-full flex items-end">
-      <div class="w-full max-w-none pointer-events-auto">
-        <h3 class="text-3xl md:text-5xl lg:text-5xl font-semibold mb-2 drop-shadow-lg leading-tight">${escapeHtml(n.title || 'Untitled')}</h3>
-        <p class="hidden sm:block text-lg md:text-xl opacity-95 drop-shadow">${escapeHtml(n.summary || '')}</p>
-      </div>
-    </div>`;
+      const overlay = document.createElement('div');
+      overlay.className = 'absolute inset-0 p-4 sm:p-6 text-white z-30 pointer-events-none';
+      overlay.innerHTML = `
+        <div class="w-90 h-full flex items-end">
+          <div class="w-full max-w-none pointer-events-auto">
+            <h3 class="text-3xl md:text-5xl lg:text-5xl font-semibold mb-2 drop-shadow-lg leading-tight">${escapeHtml(n.title || 'Untitled')}</h3>
+            <p class="hidden sm:block text-lg md:text-xl opacity-95 drop-shadow">${escapeHtml(n.summary || '')}</p>
+          </div>
+        </div>`;
       a.appendChild(overlay);
 
       slidesContainer.appendChild(a);
@@ -215,12 +213,16 @@
   // fetch news and populate both trending list and carousel
   async function load(){
     try{
-      const snap = await db.collection('news').orderBy('createdAt','desc').limit(8).get();
+      // IMPORTANT: fetch all news ordered newest -> oldest so trending can show ALL items (latest first).
+      // Then use the first 8 for the carousel.
+      const snap = await db.collection('news').orderBy('createdAt','desc').get(); // removed .limit(8)
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // populate trending list
-      populateTrendingList(items.slice(0,6)); // trending shows top 6
-      // populate carousel with first 6 (or fewer)
-      createCarousel(items.slice(0,6));
+
+      // trending should show ALL news (latest first)
+      populateTrendingList(items);
+
+      // carousel should show the latest 8 (or fewer if less than 8 exist)
+      createCarousel(items.slice(0,8));
     }catch(err){
       console.warn('news-loader failed', err);
       // show errors gracefully

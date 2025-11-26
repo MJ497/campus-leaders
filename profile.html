@@ -213,7 +213,54 @@
             <div class="text-sm text-gray-500">Loading your posts...</div>
           </div>
         </div> -->
+        <!-- User Posts (grid) -->
+<div class="card bg-white p-6 border border-gray-200">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h3 class="font-bold">My Posts</h3>
+      <p class="text-sm text-gray-500">Your posts — click a tile to view. You can delete posts from the modal.</p>
+    </div>
+    <div>
+      <button id="refresh-posts-btn" class="px-3 py-1 rounded border text-sm bghover">Refresh</button>
+    </div>
+  </div>
+
+  <div id="user-posts-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+    <!-- tiles injected here -->
+    <div class="col-span-3 text-sm text-gray-500 p-4" id="posts-loading">Loading posts…</div>
+  </div>
+
+  <div id="no-posts" class="hidden text-sm text-gray-500 mt-3">You have not posted anything yet.</div>
+</div>
+
+<!-- Post modal -->
+<div id="post-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/50"></div>
+  <div class="relative bg-white w-full max-w-3xl rounded-lg shadow-lg z-10 overflow-hidden">
+    <div class="flex items-start gap-4 p-4 border-b">
+      <div class="flex-1">
+        <h4 id="modal-post-title" class="font-semibold text-lg"></h4>
+        <div class="text-xs text-gray-500 mt-1" id="modal-post-meta"></div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="modal-delete-btn" class="px-3 py-1 rounded text-sm text-red-600 border">Delete</button>
+        <button id="modal-close-btn" class="px-3 py-1 rounded bghover text-sm">Close</button>
+      </div>
+    </div>
+
+    <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-auto">
+      <div class="bg-gray-100 rounded overflow-hidden">
+        <img id="modal-post-image" src="" alt="post image" class="w-full h-full object-cover" />
+      </div>
+      <div>
+        <div id="modal-post-body" class="prose max-w-none text-sm"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
       </section>
+
 
       <!-- Right column: quick links -->
       <aside class="lg:col-span-1 space-y-6">
@@ -269,7 +316,6 @@
     </div>
   </footer>
 
-  <!-- Edit profile modal (hidden initially) -->
   <div id="edit-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-black opacity-40"></div>
     <div class="relative w-full max-w-2xl bg-white rounded-lg shadow-lg p-6 z-10 overflow-auto max-h-[90vh]">
@@ -622,68 +668,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }catch(e){ /* ignore */ }
 
 </script>
-
-<!-- <script>
-  // Download profile details as a Word (.doc) file
-  document.getElementById('download-json')?.addEventListener('click', function(){
-    const fullname = document.getElementById('profile-fullname')?.textContent || '';
-    const position = document.getElementById('profile-position')?.textContent || '';
-    const school = document.getElementById('profile-school')?.textContent || '';
-    const year = document.getElementById('profile-year')?.textContent || '';
-    const association = document.getElementById('association')?.textContent || '';
-    const state = document.getElementById('state')?.textContent || '';
-    const email = document.getElementById('email')?.textContent || '';
-    const phone = document.getElementById('phone')?.textContent || '';
-    const bio = document.getElementById('bio')?.textContent || '';
-
-    const html = `
-      <html>
-        <head><meta charset="utf-8"><title>${fullname} - Profile</title></head>
-        <body>
-          <h1>${fullname}</h1>
-          <p><strong>Position:</strong> ${position}</p>
-          <p><strong>School / Year:</strong> ${school} ${year}</p>
-          <p><strong>Association:</strong> ${association}</p>
-          <p><strong>State:</strong> ${state}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Phone:</strong> ${phone}</p>
-          <h3>Bio</h3>
-          <p>${bio.replace(/\n/g,'<br/>')}</p>
-        </body>
-      </html>`;
-
-    const blob = new Blob([html], { type: 'application/msword' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = (fullname ? fullname.replace(/\s+/g,'_') : 'profile') + '.doc';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=> URL.revokeObjectURL(url), 10000);
-  });
-
-  // Export vCard (basic)
-  document.getElementById('download-vcard')?.addEventListener('click', function(){
-    const fullname = document.getElementById('profile-fullname')?.textContent || '';
-    const email = document.getElementById('email')?.textContent || '';
-    const phone = document.getElementById('phone')?.textContent || '';
-    const lines = [
-      'BEGIN:VCARD',
-      'VERSION:3.0',
-      `FN:${fullname}`,
-      email ? `EMAIL;TYPE=INTERNET:${email}` : '',
-      phone ? `TEL;TYPE=CELL:${phone}` : '',
-      'END:VCARD'
-    ].filter(Boolean).join('\r\n');
-    const blob = new Blob([lines], { type: 'text/vcard' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = (fullname ? fullname.replace(/\s+/g,'_') : 'contact') + '.vcf';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=> URL.revokeObjectURL(url), 10000);
-  });
-</script> -->
 
 </body>
 

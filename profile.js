@@ -1,5 +1,10 @@
-// profile.js — cleaned and deduplicated
-// Attach this file as profile.js (replace existing). Keeps your UI unchanged.
+// profile.js — merged, patched, single-file version
+// - single firebase init
+// - single auth.onAuthStateChanged
+// - profile UI (populate/edit/export)
+// - Instagram-style posts grid + modal + delete
+// - small helpers (toast, image upload hook)
+// ------------------------------------------------------------------
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDC3L5vruhYXfarn5O81cLld50oagYkmxE",
@@ -10,12 +15,13 @@ const FIREBASE_CONFIG = {
   appId: "1:445360528951:web:712da8859c8ac4cb6129b2"
 };
 
+// Initialize Firebase once
 if (window.firebase && FIREBASE_CONFIG && FIREBASE_CONFIG.projectId) {
   try { if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); } catch (e) { console.warn('Firebase init error', e); }
 }
-
 const auth = firebase.auth();
 const db = firebase.firestore();
+const storage = (firebase.storage ? firebase.storage() : null);
 
 //////////////////// DOM refs ////////////////////
 const profileAvatar = document.getElementById('profile-avatar');
@@ -57,6 +63,7 @@ let inputImageName = document.getElementById('input-image-name');
 const downloadBtn = document.getElementById('download-json'); // main Download button in UI
 const exportVcardBtn = document.getElementById('download-vcard');
 const toast = document.getElementById('toast');
+// posts area reference (older list area kept for backward compatibility, but grid is primary)
 const profileActivityPosts = document.getElementById('profile-activity-posts');
 
 let currentUser = null;
@@ -75,23 +82,36 @@ function showToast(msg, bg = '#111827', ms = 2500) {
 function openEditModal() { if (!editModal) return; editModal.classList.remove('hidden'); editModal.classList.add('flex'); }
 function closeEditModal() { if (!editModal) return; editModal.classList.add('hidden'); editModal.classList.remove('flex'); uploadedImageFile = null; if (inputImage) inputImage.value = ''; if (inputImageName) inputImageName.textContent = ''; }
 
+function escapeHtml(s){ if(s === undefined || s === null) return ''; return s.toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+
+function normalizeImgurUrl(url){
+  if(!url) return '';
+  try{
+    const u = url.trim();
+    if(/^https?:\/\/i\.imgur\.com\//i.test(u)) return u;
+    const m = u.match(/imgur\.com\/(?:a\/|gallery\/)?([A-Za-z0-9]+)/i);
+    if(m && m[1]) return 'https://i.imgur.com/' + m[1] + '.jpg';
+    return u;
+  }catch(e){ return url; }
+}
+
 //////////////////// Populate UI ////////////////////
 async function populateProfile(user) {
   currentUser = user;
   if (!user) {
-    profileFullname.textContent = 'Guest';
-    profilePosition.textContent = '';
-    profileSchool.textContent = '';
-    profileYear.textContent = '';
-    profileAssoc.textContent = '';
-    profileState.textContent = '';
-    firstNameEl.textContent = '—';
-    lastNameEl.textContent = '—';
-    emailEl.textContent = 'Not signed in';
-    phoneEl.textContent = '—';
-    bioEl.textContent = 'Sign in to manage your profile.';
-    associationEl.textContent = '';
-    stateEl.textContent = '';
+    profileFullname && (profileFullname.textContent = 'Guest');
+    profilePosition && (profilePosition.textContent = '');
+    profileSchool && (profileSchool.textContent = '');
+    profileYear && (profileYear.textContent = '');
+    profileAssoc && (profileAssoc.textContent = '');
+    profileState && (profileState.textContent = '');
+    firstNameEl && (firstNameEl.textContent = '—');
+    lastNameEl && (lastNameEl.textContent = '—');
+    emailEl && (emailEl.textContent = 'Not signed in');
+    phoneEl && (phoneEl.textContent = '—');
+    bioEl && (bioEl.textContent = 'Sign in to manage your profile.');
+    associationEl && (associationEl.textContent = '');
+    stateEl && (stateEl.textContent = '');
     if (navAvatar) navAvatar.innerHTML = '<i class="fas fa-user"></i>';
     return;
   }
@@ -101,8 +121,8 @@ async function populateProfile(user) {
     currentUserDoc = doc.exists ? doc.data() : null;
   } catch (e) { console.warn('Error reading user doc', e); currentUserDoc = null; }
 
-  const first = currentUserDoc?.firstName || user.displayName?.split(' ')[0] || '';
-  const last = currentUserDoc?.lastName || user.displayName?.split(' ').slice(1).join(' ') || '';
+  const first = currentUserDoc?.firstName || (user.displayName ? user.displayName.split(' ')[0] : '') || '';
+  const last = currentUserDoc?.lastName || (user.displayName ? user.displayName.split(' ').slice(1).join(' ') : '') || '';
   const position = currentUserDoc?.position || '';
   const email = user.email || '';
   const phone = currentUserDoc?.phone || user.phoneNumber || '';
@@ -113,26 +133,26 @@ async function populateProfile(user) {
   const state = currentUserDoc?.stateName || '';
   const imageUrl = currentUserDoc?.imageUrl || user.photoURL || null;
 
-  profileFullname.textContent = [first, last].filter(Boolean).join(' ') || (user.displayName || 'Member');
-  profilePosition.textContent = position;
-  profileSchool.textContent = school;
-  profileYear.textContent = year;
-  profileAssoc.textContent = assoc;
-  profileState.textContent = state;
+  profileFullname && (profileFullname.textContent = [first, last].filter(Boolean).join(' ') || (user.displayName || 'Member'));
+  profilePosition && (profilePosition.textContent = position);
+  profileSchool && (profileSchool.textContent = school);
+  profileYear && (profileYear.textContent = year);
+  profileAssoc && (profileAssoc.textContent = assoc);
+  profileState && (profileState.textContent = state);
 
-  firstNameEl.textContent = first || '—';
-  lastNameEl.textContent = last || '—';
-  emailEl.textContent = email || '—';
-  phoneEl.textContent = phone || '—';
-  bioEl.textContent = bio || '—';
-  associationEl.textContent = assoc || '—';
-  stateEl.textContent = state || '—';
+  firstNameEl && (firstNameEl.textContent = first || '—');
+  lastNameEl && (lastNameEl.textContent = last || '—');
+  emailEl && (emailEl.textContent = email || '—');
+  phoneEl && (phoneEl.textContent = phone || '—');
+  bioEl && (bioEl.textContent = bio || '—');
+  associationEl && (associationEl.textContent = assoc || '—');
+  stateEl && (stateEl.textContent = state || '—');
 
   // avatar
   if (imageUrl) {
     if (profileAvatar) {
       profileAvatar.innerHTML = '';
-      const img = document.createElement('img'); img.src = imageUrl; img.alt = profileFullname.textContent || 'avatar';
+      const img = document.createElement('img'); img.src = imageUrl; img.alt = profileFullname?.textContent || 'avatar';
       img.className = 'h-full w-full object-cover'; img.loading = 'lazy';
       img.onerror = () => { profileAvatar.innerHTML = '<i class="fas fa-user text-2xl"></i>'; };
       profileAvatar.appendChild(img);
@@ -162,67 +182,15 @@ async function populateProfile(user) {
   if (inputBio) inputBio.value = currentUserDoc?.bio || '';
 }
 
-auth.onAuthStateChanged(async (user) => {
-  if (user) await populateProfile(user);
-  else await populateProfile(null);
-  loadProfilePosts(user);
-  setTimeout(() => { try { populateProfile(user); } catch (e) {} }, 350);
-});
-
-//////////////////// Profile posts (lightweight) ////////////////////
-async function loadProfilePosts(user) {
-  if (!profileActivityPosts) return;
-  profileActivityPosts.innerHTML = '<div class="text-sm text-gray-500">Loading your posts...</div>';
-  try {
-    let posts = [];
-    if (user && db) {
-      // robust multi-field query fallback
-      const queries = [];
-      try { queries.push(db.collection('posts').where('authorId','==',user.uid).orderBy('createdAt','desc').limit(50).get()); } catch(e){}
-      try { queries.push(db.collection('posts').where('authorUid','==',user.uid).orderBy('createdAt','desc').limit(50).get()); } catch(e){}
-      try { queries.push(db.collection('posts').where('uid','==',user.uid).orderBy('createdAt','desc').limit(50).get()); } catch(e){}
-      if (user.email) try { queries.push(db.collection('posts').where('authorEmail','==',user.email).orderBy('createdAt','desc').limit(50).get()); } catch(e){}
-
-      if (queries.length === 0) {
-        const snap = await db.collection('posts').orderBy('createdAt','desc').limit(50).get();
-        posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } else {
-        const snaps = await Promise.all(queries.map(p => p.catch(() => null)));
-        const map = new Map();
-        snaps.forEach(snap => { if (!snap) return; snap.docs.forEach(d => { const data = { id: d.id, ...d.data() }; if (!map.has(data.id)) map.set(data.id, data); }); });
-        posts = Array.from(map.values()).sort((a,b)=>{ const ta = a.createdAt ? (a.createdAt.seconds||new Date(a.createdAt).getTime()/1000):0; const tb = b.createdAt ? (b.createdAt.seconds||new Date(b.createdAt).getTime()/1000):0; return tb-ta; }).slice(0,50);
-      }
-    } else {
-      const arr = JSON.parse(localStorage.getItem('campus_posts_v1') || '[]');
-      posts = arr.filter(p => (currentUserDoc && currentUserDoc.firstName && (p.authorFirst === currentUserDoc.firstName)) || false).slice().reverse();
-    }
-
-    if (!posts || posts.length === 0) { profileActivityPosts.innerHTML = '<div class="text-sm text-gray-500">No posts yet.</div>'; return; }
-    profileActivityPosts.innerHTML = '';
-    posts.forEach(p => {
-      try {
-        const node = (typeof renderPost === 'function') ? renderPost(p) : null;
-        if (node) {
-          node.style.maxWidth = '360px'; node.style.margin = '0'; node.style.display = 'block';
-          profileActivityPosts.appendChild(node);
-        } else {
-          const el = document.createElement('div'); el.className = 'p-3 border rounded'; el.textContent = p.title || (p.body||'').slice(0,120); el.style.maxWidth = '360px'; profileActivityPosts.appendChild(el);
-        }
-      } catch (err) { console.warn('Failed to render post preview', err); }
-    });
-  } catch (err) {
-    console.error('Failed to load profile posts', err);
-    profileActivityPosts.innerHTML = '<div class="text-sm text-gray-500">Failed to load posts.</div>';
-  }
-}
-
 //////////////////// Image upload helper ////////////////////
+// If you have a server endpoint for ImageKit/Uploadcare, this will POST to it and return the URL.
+// If you don't, keep this but adjust to your upload backend.
 async function uploadToImageKitServer(file) {
   if (!file) return null;
   try {
     const fd = new FormData(); fd.append('file', file);
     const resp = await fetch('/imagekit-upload', { method: 'POST', body: fd });
-    if (!resp.ok) { const text = await resp.text().catch(()=>''); throw new Error('Upload failed: '+resp.status+' '+text); }
+    if (!resp.ok) { const text = await resp.text().catch(()=> ''); throw new Error('Upload failed: '+resp.status+' '+text); }
     const data = await resp.json(); return data.url || null;
   } catch (err) { console.error('ImageKit upload error', err); throw err; }
 }
@@ -305,7 +273,6 @@ function collectProfilePayload() {
   };
 }
 
-// jsPDF loader
 async function ensureJsPdf() {
   if (window.jspdf) return window.jspdf;
   return new Promise((resolve, reject) => {
@@ -318,37 +285,77 @@ async function ensureJsPdf() {
 }
 
 async function exportProfileToPDF() {
-  if (!auth.currentUser) { showToast('Sign in to export', '#dc2626'); return; }
-  const payload = collectProfilePayload(); if (!payload) { showToast('No profile data', '#dc2626'); return; }
+  if (!auth.currentUser) { 
+    showToast('Sign in to export', '#dc2626'); return; }
+  const payload = collectProfilePayload();
+  if (!payload) { showToast('No profile data', '#dc2626'); return; }
   try {
-    const jspdfLib = await ensureJsPdf(); const { jsPDF } = jspdfLib; const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const jspdfLib = await ensureJsPdf();
+    const { jsPDF } = jspdfLib; const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const marginLeft = 40; let y = 40;
     doc.setFontSize(18); doc.text(payload.displayName || `${payload.firstName} ${payload.lastName}`, marginLeft, y); y += 22;
     doc.setFontSize(11);
-    const lines = [ `Email: ${payload.email||''}`, `Phone: ${payload.phone||''}`, `Position: ${payload.position||''}`, `Association: ${payload.association||''}`, `School: ${payload.schoolName||''} ${payload.yearHeld?('('+payload.yearHeld+')'):''}`, `State: ${payload.stateName||''}`, '' ];
+    const lines = [ 
+      `Email: ${payload.email||''}`,
+      `Phone: ${payload.phone||''}`, 
+      `Position: ${payload.position||''}`, 
+      `Association: ${payload.association||''}`,
+      `School: ${payload.schoolName||''} ${payload.yearHeld?('('+payload.yearHeld+')'):''}`, 
+      `State: ${payload.stateName||''}`, '' ];
+
     lines.forEach(line=>{ doc.text(line, marginLeft, y); y+=16; });
-    if (payload.bio) { y+=4; doc.setFontSize(12); doc.text('Bio:', marginLeft, y); y+=14; doc.setFontSize(10); const pageWidth = doc.internal.pageSize.getWidth(); const usableWidth = pageWidth - marginLeft*2; const bioLines = doc.splitTextToSize(payload.bio, usableWidth); doc.text(bioLines, marginLeft, y); y += bioLines.length*12 + 8; }
+    if (payload.bio) { 
+      y+=4; doc.setFontSize(12);
+      doc.text('Bio:', marginLeft, y); 
+      y+=14; doc.setFontSize(10);
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const usableWidth = pageWidth - marginLeft*2; 
+      const bioLines = doc.splitTextToSize(payload.bio, usableWidth); 
+      doc.text(bioLines, marginLeft, y);
+      y += bioLines.length*12 + 8;
+    }
     if (payload.imageUrl) {
       try {
-        const res = await fetch(payload.imageUrl); const blob = await res.blob(); const dataUrl = await new Promise(res2=>{ const r=new FileReader(); r.onload=()=>res2(r.result); r.readAsDataURL(blob); });
-        const imgProps = doc.getImageProperties(dataUrl); const iw = 120; const ih = (imgProps.height/imgProps.width)*iw; const pageW = doc.internal.pageSize.getWidth(); doc.addImage(dataUrl, 'JPEG', pageW - marginLeft - iw, 40, iw, ih);
+        const res = await fetch(payload.imageUrl); 
+        const blob = await res.blob();
+        const dataUrl = await new Promise(res2=>{
+          const r=new FileReader();
+          r.onload=()=>res2(r.result);
+          r.readAsDataURL(blob);
+        });
+        const imgProps = doc.getImageProperties(dataUrl);
+        const iw = 120; const ih = (imgProps.height/imgProps.width)*iw; 
+        const pageW = doc.internal.pageSize.getWidth(); 
+        doc.addImage(dataUrl, 'JPEG', pageW - marginLeft - iw, 40, iw, ih);
       } catch (err) { console.warn('Failed to add image to PDF', err); }
     }
-    doc.setFontSize(9); doc.text(`Exported: ${new Date().toLocaleString()}`, marginLeft, doc.internal.pageSize.getHeight() - 30);
-    const filename = `${(payload.displayName || payload.email || 'profile')}_profile.pdf`.replace(/\s+/g,'_'); doc.save(filename); showToast('PDF exported.');
-  } catch (err) { console.error('PDF export failed', err); showToast('PDF export failed', '#dc2626'); }
+    doc.setFontSize(9); 
+    doc.text(`Exported: ${new Date().toLocaleString()}`, marginLeft, doc.internal.pageSize.getHeight() - 30);
+    const filename = `${(payload.displayName || payload.email || 'profile')}_profile.pdf`.replace(/\s+/g,'_'); 
+    doc.save(filename); showToast('PDF exported.');
+  } catch (err) {
+    console.error('PDF export failed', err); showToast('PDF export failed', '#dc2626');
+  }
 }
 
 function exportProfileToDocx() {
-  if (!auth.currentUser) { showToast('Sign in to export', '#dc2626'); return; }
-  const payload = collectProfilePayload(); if (!payload) { showToast('No profile data', '#dc2626'); return; }
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(payload.displayName || 'Profile')}</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111827;padding:24px;}h1{font-size:20px;margin-bottom:6px}.meta{margin-bottom:12px;font-size:13px;color:#374151}.section{margin-bottom:10px}.label{font-weight:bold;color:#111827}.bio{white-space:pre-wrap;margin-top:6px;color:#111827}.avatar{float:right;margin-left:12px;width:120px;height:120px;object-fit:cover;border-radius:6px}</style></head><body>${payload.imageUrl?`<img src="${payload.imageUrl}" class="avatar"/>`:''}<h1>${escapeHtml(payload.displayName || (payload.firstName+' '+payload.lastName))}</h1><div class="meta">${payload.position?`<div><span class="label">Position:</span> ${escapeHtml(payload.position)}</div>`:''}${payload.schoolName?`<div><span class="label">School:</span> ${escapeHtml(payload.schoolName)} ${payload.yearHeld?('('+escapeHtml(payload.yearHeld)+')'):''}</div>`:''}${payload.association?`<div><span class="label">Association:</span> ${escapeHtml(payload.association)}</div>`:''}${payload.stateName?`<div><span class="label">State:</span> ${escapeHtml(payload.stateName)}</div>`:''}${payload.phone?`<div><span class="label">Phone:</span> ${escapeHtml(payload.phone)}</div>`:''}${payload.email?`<div><span class="label">Email:</span> ${escapeHtml(payload.email)}</div>`:''}</div>${payload.bio?`<div class="section"><div class="label">Bio</div><div class="bio">${escapeHtml(payload.bio)}</div></div>`:''}<div style="margin-top:24px;font-size:11px;color:#6b7280;">Exported: ${new Date().toLocaleString()}</div></body></html>`;
+  if (!auth.currentUser) {
+     showToast('Sign in to export', '#dc2626'); return; }
+  const payload = collectProfilePayload(); if (!payload) {
+     showToast('No profile data', '#dc2626'); return; }
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${
+    escapeHtml(payload.displayName || 'Profile')}
+    </title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111827;padding:24px;}h1{font-size:20px;margin-bottom:6px}.meta{margin-bottom:12px;font-size:13px;color:#374151}.section{margin-bottom:10px}.label{font-weight:bold;color:#111827}.bio{white-space:pre-wrap;margin-top:6px;color:#111827}.avatar{float:right;margin-left:12px;width:120px;height:120px;object-fit:cover;border-radius:6px}</style></head><body>${payload.imageUrl?`<img src="${payload.imageUrl}" class="avatar"/>`:''}<h1>${escapeHtml(payload.displayName || (payload.firstName+' '+payload.lastName))}</h1><div class="meta">${payload.position?`<div><span class="label">Position:</span> ${escapeHtml(payload.position)}</div>`:''}${payload.schoolName?`<div><span class="label">School:</span> ${escapeHtml(payload.schoolName)} ${payload.yearHeld?('('+escapeHtml(payload.yearHeld)+')'):''}</div>`:''}${payload.association?`<div><span class="label">Association:</span> ${escapeHtml(payload.association)}</div>`:''}${payload.stateName?`<div><span class="label">State:</span> ${escapeHtml(payload.stateName)}</div>`:''}${payload.phone?`<div><span class="label">Phone:</span> ${escapeHtml(payload.phone)}</div>`:''}${payload.email?`<div><span class="label">Email:</span> ${escapeHtml(payload.email)}</div>`:''}</div>${payload.bio?`<div class="section"><div class="label">Bio</div><div class="bio">${escapeHtml(payload.bio)}</div></div>`:''}<div style="margin-top:24px;font-size:11px;color:#6b7280;">Exported: ${new Date().toLocaleString()}</div></body></html>`;
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-  const filename = `${(payload.displayName || payload.email || 'profile')}_profile.docx`.replace(/\s+/g,'_');
-  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showToast('Word document exported.');
+  const filename = `${(payload.displayName || payload.email || 'profile')}
+  _profile.docx`.replace(/\s+/g,'_');
+  const url = URL.createObjectURL(blob);
+   const a = document.createElement('a');
+    a.href = url; a.download = filename; 
+    document.body.appendChild(a); a.click();
+     a.remove(); URL.revokeObjectURL(url); 
+     showToast('Word document exported.');
 }
-
-function escapeHtml(s) { if (!s && s !== 0) return ''; return String(s).replace(/[&<>"']/g, (m)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[m]); }
 
 //////////////////// vCard export ////////////////////
 if (exportVcardBtn) {
@@ -367,7 +374,6 @@ if (exportVcardBtn) {
 if (downloadBtn) {
   downloadBtn.addEventListener('click', async (e)=>{
     e.preventDefault(); if (!auth.currentUser) { showToast('Sign in to export', '#dc2626'); return; }
-    // Small, non-UI-changing prompt to pick format
     const useDoc = confirm('Click OK to download as Word (.docx). Click Cancel to download as PDF.');
     if (useDoc) exportProfileToDocx(); else await exportProfileToPDF();
   });
@@ -379,7 +385,6 @@ if (signOutBtn) {
   signOutBtn.addEventListener('click', async (e)=>{ e.preventDefault(); try { if (window.CampusLeaders && typeof window.CampusLeaders.signOutNow === 'function') { window.CampusLeaders.signOutNow(); } else { await auth.signOut(); showToast('Signed out.'); window.location.href = '/index.html'; } } catch (err) { console.error('Sign out failed', err); showToast('Sign out failed', '#dc2626'); } });
 }
 
-// user menu toggle
 const userMenuButton = document.getElementById('user-menu-button');
 const userMenu = document.getElementById('user-menu');
 if (userMenuButton) {
@@ -387,7 +392,295 @@ if (userMenuButton) {
   document.addEventListener('click', (e)=>{ if (userMenu && !userMenu.contains(e.target) && !userMenuButton.contains(e.target)) userMenu.classList.add('hidden'); });
 }
 
-// small helper to keep compatibility if global search integration expects doSearch
+// fallback doSearch stub
 if (typeof doSearch !== 'function') window.doSearch = async function(q) { if (!q) return; alert('Search not available here.'); };
 
-// End of profile.js
+//////////////////// POSTS GRID MODULE (single source for posts) ////////////////////
+(function PostsModule(){
+  // DOM refs for posts grid + modal
+  const grid = document.getElementById('user-posts-grid'); // IG-style grid (primary)
+  const postsLoading = document.getElementById('posts-loading');
+  const noPostsEl = document.getElementById('no-posts');
+  const refreshBtn = document.getElementById('refresh-posts-btn');
+
+  // modal refs
+  const modal = document.getElementById('post-modal');
+  const modalClose = document.getElementById('modal-close-btn');
+  const modalDelete = document.getElementById('modal-delete-btn');
+  const modalTitle = document.getElementById('modal-post-title');
+  const modalMeta = document.getElementById('modal-post-meta');
+  const modalImage = document.getElementById('modal-post-image');
+  const modalBody = document.getElementById('modal-post-body');
+
+  let localCurrentUser = null;
+  let postsCache = []; // locally cached posts for the grid
+  let currentDisplayedPost = null;
+
+  // Render the grid of square tiles
+  function renderGrid(posts){
+    postsCache = posts || [];
+    if(!grid) return;
+    grid.innerHTML = '';
+    if(!posts || posts.length === 0){
+      noPostsEl && noPostsEl.classList.remove('hidden');
+      if(postsLoading) postsLoading.classList.add('hidden');
+      return;
+    }
+    noPostsEl && noPostsEl.classList.add('hidden');
+    if(postsLoading) postsLoading.classList.add('hidden');
+
+    // create tiles
+    posts.forEach(p => {
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'relative rounded overflow-hidden aspect-square bg-gray-200 flex items-end justify-start p-2 focus:outline-none';
+      tile.title = p.title || 'View post';
+
+      // background image if present
+      const bg = p.imageUrl ? escapeHtml(normalizeImgurUrl(p.imageUrl)) : '';
+      if (bg) {
+        tile.style.backgroundImage = `url('${bg}')`;
+        tile.style.backgroundSize = 'cover';
+        tile.style.backgroundPosition = 'center';
+        tile.style.backgroundRepeat = 'no-repeat';
+      } else {
+        // placeholder content
+        tile.style.backgroundColor = '#f3f4f6';
+      }
+
+      // overlay (dark gradient + title)
+      const overlay = document.createElement('div');
+      overlay.className = 'absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-2 flex items-end';
+      overlay.style.pointerEvents = 'none';
+      const titleWrap = document.createElement('div');
+      titleWrap.className = 'text-xs text-white font-semibold truncate pointer-events-none';
+      titleWrap.textContent = p.title || '';
+      overlay.appendChild(titleWrap);
+      tile.appendChild(overlay);
+
+      tile.addEventListener('click', ()=> openModalForPost(p.id));
+      grid.appendChild(tile);
+    });
+  }
+
+  // Open and populate modal
+  async function openModalForPost(postId){
+    // find post in postsCache
+    const post = postsCache.find(x => x.id === postId);
+    if(!post){
+      // fetch single doc
+      try {
+        const doc = await db.collection('posts').doc(postId).get();
+        if(!doc.exists) return alert('Post not found');
+        currentDisplayedPost = { id: doc.id, ...doc.data() };
+      }catch(err){
+        console.error(err);
+        return alert('Failed fetching post');
+      }
+    } else {
+      currentDisplayedPost = post;
+    }
+
+    // populate modal
+    modalTitle && (modalTitle.textContent = currentDisplayedPost.title || '(no title)');
+    const createdAt = currentDisplayedPost.createdAt && currentDisplayedPost.createdAt.seconds
+      ? new Date(currentDisplayedPost.createdAt.seconds * 1000)
+      : (currentDisplayedPost.createdAt ? new Date(currentDisplayedPost.createdAt) : null);
+    modalMeta && (modalMeta.textContent = createdAt ? `${createdAt.toLocaleString()}` : '');
+
+    if(modalImage) {
+      modalImage.src = currentDisplayedPost.imageUrl ? normalizeImgurUrl(currentDisplayedPost.imageUrl) : '';
+      modalImage.alt = currentDisplayedPost.title || 'post image';
+    }
+    modalBody && (modalBody.innerText = currentDisplayedPost.body || '');
+
+    // show modal
+    modal && modal.classList.remove('hidden');
+    // trap escape to close
+    document.addEventListener('keydown', escToClose);
+  }
+
+  function closeModal(){
+    modal && modal.classList.add('hidden');
+    currentDisplayedPost = null;
+    document.removeEventListener('keydown', escToClose);
+  }
+  function escToClose(e){ if(e.key === 'Escape') closeModal(); }
+
+  // Delete current displayed post
+  async function deleteCurrentPost(){
+    if(!currentDisplayedPost) return;
+    if(!confirm('Delete this post permanently? This cannot be undone.')) return;
+
+    const id = currentDisplayedPost.id;
+    try{
+      // If the post references a firebase storage path (imagePath) attempt to remove it
+      if(currentDisplayedPost.imagePath && storage){
+        try{
+          // storage.refFromURL accepts gs:// and https://firebasestorage...
+          await storage.refFromURL(currentDisplayedPost.imagePath).delete();
+        }catch(e){
+          // try deleting by storage.ref(fullPath)
+          try{ await storage.ref(currentDisplayedPost.imagePath).delete(); }catch(e2){ /* ignore */ }
+        }
+      }
+      // Delete the post document
+      await db.collection('posts').doc(id).delete();
+      showToast('Post deleted');
+      closeModal();
+      // remove locally and re-render
+      postsCache = postsCache.filter(p=>p.id !== id);
+      renderGrid(postsCache);
+    }catch(err){
+      console.error('Failed deleting post', err);
+      alert('Failed deleting post. Check console for details.');
+    }
+  }
+
+  // Show posts from Firestore for the signed-in user
+  async function loadUserPosts(forceEmailFallback = true, userOverride = null){
+    localCurrentUser = userOverride || auth.currentUser;
+    if(!grid) return;
+    if(postsLoading) postsLoading.classList.remove('hidden');
+    noPostsEl && noPostsEl.classList.add('hidden');
+    grid.innerHTML = '';
+
+    try{
+      if(!localCurrentUser){
+        grid.innerHTML = '<div class="col-span-3 p-4 text-sm text-gray-500">Sign in to view your posts.</div>';
+        if(postsLoading) postsLoading.classList.add('hidden');
+        return;
+      }
+
+      // Preferred query: authorUid (fast & secure)
+      let snap = null;
+      try{
+        snap = await db.collection('posts')
+          .where('authorUid','==', localCurrentUser.uid)
+          .orderBy('createdAt','desc')
+          .limit(200)
+          .get();
+      }catch(e){
+        console.warn('authorUid query failed (maybe no index) — falling back', e);
+        snap = null;
+      }
+
+      if(snap && snap.docs && snap.docs.length > 0){
+        const posts = snap.docs.map(d=>({ id: d.id, ...d.data() }));
+        renderGrid(posts);
+        return;
+      }
+
+      // Fallback: authorEmail
+      if(forceEmailFallback && localCurrentUser.email){
+        try{
+          const snap2 = await db.collection('posts').where('authorEmail','==', (localCurrentUser.email||'').toLowerCase()).orderBy('createdAt','desc').limit(200).get();
+          if(snap2 && snap2.docs.length){
+            const posts = snap2.docs.map(d=>({ id: d.id, ...d.data() }));
+            renderGrid(posts);
+            return;
+          }
+        }catch(e){
+          console.warn('authorEmail query failed, will try client-side filtering', e);
+          // fetch recent posts then filter client-side (safe for moderate dataset)
+          const snapAll = await db.collection('posts').orderBy('createdAt','desc').limit(500).get();
+          const posts = snapAll.docs.map(d=>({ id: d.id, ...d.data() })).filter(p => (p.authorEmail || '').toLowerCase() === (localCurrentUser.email||'').toLowerCase());
+          renderGrid(posts);
+          return;
+        }
+      }
+
+      // If nothing found
+      renderGrid([]);
+    }catch(err){
+      console.error('Error loading posts', err);
+      grid.innerHTML = '<div class="col-span-3 p-4 text-sm text-red-500">Unable to load your posts.</div>';
+    } finally {
+      if(postsLoading) postsLoading.classList.add('hidden');
+    }
+  }
+
+  // Wire modal buttons and refresh
+  modalClose && modalClose.addEventListener('click', closeModal);
+  modal && modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
+  modalDelete && modalDelete.addEventListener('click', deleteCurrentPost);
+  refreshBtn && refreshBtn.addEventListener('click', ()=> loadUserPosts(true, auth.currentUser));
+
+  // Expose public API
+  window.ProfilePosts = {
+    reload: (forceEmailFallback = true, userOverride = null) => loadUserPosts(forceEmailFallback, userOverride)
+  };
+})(); // end PostsModule
+
+//////////////////// Backwards-compatible (optional) basic list renderer ////////////////////
+// If you have an older `renderPost` function or list area, we keep a lightweight loader that can be used
+// for the small "Activity" section. By default the profile uses the grid; this function is here if you
+// want to keep the older vertical list view elsewhere.
+async function loadProfilePostsLegacy(user) {
+  if (!profileActivityPosts) return;
+  profileActivityPosts.innerHTML = '<div class="text-sm text-gray-500">Loading your posts...</div>';
+  try {
+    let posts = [];
+    if (user && db) {
+      const queries = [];
+      try { queries.push(db.collection('posts').where('authorId','==',user.uid).orderBy('createdAt','desc').limit(50).get()); } catch(e){}
+      try { queries.push(db.collection('posts').where('authorUid','==',user.uid).orderBy('createdAt','desc').limit(50).get()); } catch(e){}
+      try { queries.push(db.collection('posts').where('uid','==',user.uid).orderBy('createdAt','desc').limit(50).get()); } catch(e){}
+      if (user.email) try { queries.push(db.collection('posts').where('authorEmail','==',user.email).orderBy('createdAt','desc').limit(50).get()); } catch(e){}
+
+      if (queries.length === 0) {
+        const snap = await db.collection('posts').orderBy('createdAt','desc').limit(50).get();
+        posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } else {
+        const snaps = await Promise.all(queries.map(p => p.catch(() => null)));
+        const map = new Map();
+        snaps.forEach(snap => { if (!snap) return; snap.docs.forEach(d => { const data = { id: d.id, ...d.data() }; if (!map.has(data.id)) map.set(data.id, data); }); });
+        posts = Array.from(map.values()).sort((a,b)=>{
+          const ta = a.createdAt ? (a.createdAt.seconds||new Date(a.createdAt).getTime()/1000):0;
+          const tb = b.createdAt ? (b.createdAt.seconds||new Date(b.createdAt).getTime()/1000):0;
+          return tb-ta;
+        }).slice(0,50);
+      }
+    } else {
+      const arr = JSON.parse(localStorage.getItem('campus_posts_v1') || '[]');
+      posts = arr.filter(p => (currentUserDoc && currentUserDoc.firstName && (p.authorFirst === currentUserDoc.firstName)) || false).slice().reverse();
+    }
+
+    if (!posts || posts.length === 0) { profileActivityPosts.innerHTML = '<div class="text-sm text-gray-500">No posts yet.</div>'; return; }
+    profileActivityPosts.innerHTML = '';
+    posts.forEach(p => {
+      try {
+        const node = (typeof renderPost === 'function') ? renderPost(p) : null;
+        if (node) {
+          node.style.maxWidth = '360px'; node.style.margin = '0'; node.style.display = 'block';
+          profileActivityPosts.appendChild(node);
+        } else {
+          const el = document.createElement('div'); el.className = 'p-3 border rounded'; el.textContent = p.title || (p.body||'').slice(0,120); el.style.maxWidth = '360px'; profileActivityPosts.appendChild(el);
+        }
+      } catch (err) { console.warn('Failed to render post preview', err); }
+    });
+  } catch (err) {
+    console.error('Failed to load profile posts', err);
+    profileActivityPosts.innerHTML = '<div class="text-sm text-gray-500">Failed to load posts.</div>';
+  }
+}
+
+//////////////////// Single auth.onAuthStateChanged (top-level) ////////////////////
+auth.onAuthStateChanged(async (user) => {
+  if (user) await populateProfile(user);
+  else await populateProfile(null);
+
+  // Load the posts grid (primary)
+  if (window.ProfilePosts && typeof window.ProfilePosts.reload === 'function') {
+    try { await window.ProfilePosts.reload(true, user); } catch(e){ console.warn('ProfilePosts.reload failed', e); }
+  } else {
+    // fallback to legacy loader
+    try { await loadProfilePostsLegacy(user); } catch(e){ console.warn('legacy posts load failed', e); }
+  }
+
+  // Small re-populate to ensure UI fields update after possible async fetches
+  setTimeout(() => { try { populateProfile(user); } catch (e) {} }, 350);
+});
+
+//////////////////// End of file ////////////////////
+
