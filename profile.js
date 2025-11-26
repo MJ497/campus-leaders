@@ -1,11 +1,8 @@
-// profile.js — merged, patched, single-file version
-// - single firebase init
-// - single auth.onAuthStateChanged
-// - profile UI (populate/edit/export)
-// - Instagram-style posts grid + modal + delete
-// - small helpers (toast, image upload hook)
-// ------------------------------------------------------------------
+// profile.js — full patched version
+// Single-file profile + posts grid + robust author fetch helpers
+// Paste/replace your existing profile.js with this.
 
+// ------------------------------ Firebase init ------------------------------
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDC3L5vruhYXfarn5O81cLld50oagYkmxE",
   authDomain: "campus-leaders.firebaseapp.com",
@@ -15,15 +12,15 @@ const FIREBASE_CONFIG = {
   appId: "1:445360528951:web:712da8859c8ac4cb6129b2"
 };
 
-// Initialize Firebase once
+// Init firebase once
 if (window.firebase && FIREBASE_CONFIG && FIREBASE_CONFIG.projectId) {
   try { if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); } catch (e) { console.warn('Firebase init error', e); }
 }
-const auth = firebase.auth();
-const db = firebase.firestore();
-const storage = (firebase.storage ? firebase.storage() : null);
+const auth = (window.firebase ? firebase.auth() : null);
+const db = (window.firebase ? firebase.firestore() : null);
+const storage = (window.firebase && firebase.storage ? firebase.storage() : null);
 
-//////////////////// DOM refs ////////////////////
+// ------------------------------ DOM refs ------------------------------
 const profileAvatar = document.getElementById('profile-avatar');
 const navAvatar = document.getElementById('nav-avatar');
 const profileFullname = document.getElementById('profile-fullname');
@@ -63,14 +60,16 @@ let inputImageName = document.getElementById('input-image-name');
 const downloadBtn = document.getElementById('download-json'); // main Download button in UI
 const exportVcardBtn = document.getElementById('download-vcard');
 const toast = document.getElementById('toast');
-// posts area reference (older list area kept for backward compatibility, but grid is primary)
+
+// old activity area (kept for backward compatibility if present)
 const profileActivityPosts = document.getElementById('profile-activity-posts');
 
-let currentUser = null;
-let currentUserDoc = null;
-let uploadedImageFile = null;
+// Posts grid area ids (these must exist in your page)
+const POSTS_GRID_ID = 'user-posts-grid';
+const POSTS_LOADING_ID = 'posts-loading';
+const NO_POSTS_ID = 'no-posts';
 
-//////////////////// helpers ////////////////////
+// ------------------------------ small helpers ------------------------------
 function showToast(msg, bg = '#111827', ms = 2500) {
   if (!toast) { alert(msg); return; }
   toast.textContent = msg;
@@ -78,9 +77,6 @@ function showToast(msg, bg = '#111827', ms = 2500) {
   toast.classList.remove('hidden');
   setTimeout(() => toast.classList.add('hidden'), ms);
 }
-
-function openEditModal() { if (!editModal) return; editModal.classList.remove('hidden'); editModal.classList.add('flex'); }
-function closeEditModal() { if (!editModal) return; editModal.classList.add('hidden'); editModal.classList.remove('flex'); uploadedImageFile = null; if (inputImage) inputImage.value = ''; if (inputImageName) inputImageName.textContent = ''; }
 
 function escapeHtml(s){ if(s === undefined || s === null) return ''; return s.toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
 
@@ -95,7 +91,30 @@ function normalizeImgurUrl(url){
   }catch(e){ return url; }
 }
 
-//////////////////// Populate UI ////////////////////
+// timeSince helper (human-readable)
+function timeSince(date){
+  if(!date) return '';
+  const now = (new Date()).getTime();
+  const then = (date instanceof Date) ? date.getTime() : new Date(date).getTime();
+  const seconds = Math.floor((now - then)/1000);
+  if(seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds/60);
+  if(minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes/60);
+  if(hours < 24) return `${hours}h`;
+  const days = Math.floor(hours/24);
+  if(days < 30) return `${days}d`;
+  const months = Math.floor(days/30);
+  if(months < 12) return `${months}mo`;
+  const years = Math.floor(months/12);
+  return `${years}y`;
+}
+
+// ------------------------------ populateProfile ------------------------------
+let currentUser = null;
+let currentUserDoc = null;
+let uploadedImageFile = null;
+
 async function populateProfile(user) {
   currentUser = user;
   if (!user) {
@@ -182,23 +201,10 @@ async function populateProfile(user) {
   if (inputBio) inputBio.value = currentUserDoc?.bio || '';
 }
 
-//////////////////// Image upload helper ////////////////////
-// If you have a server endpoint for ImageKit/Uploadcare, this will POST to it and return the URL.
-// If you don't, keep this but adjust to your upload backend.
-async function uploadToImageKitServer(file) {
-  if (!file) return null;
-  try {
-    const fd = new FormData(); fd.append('file', file);
-    const resp = await fetch('/imagekit-upload', { method: 'POST', body: fd });
-    if (!resp.ok) { const text = await resp.text().catch(()=> ''); throw new Error('Upload failed: '+resp.status+' '+text); }
-    const data = await resp.json(); return data.url || null;
-  } catch (err) { console.error('ImageKit upload error', err); throw err; }
-}
-
-//////////////////// Edit form handlers ////////////////////
+// ------------------------------ Edit form handlers ------------------------------
 if (editBtn) {
   editBtn.addEventListener('click', () => {
-    if (!auth.currentUser) { showToast('Please sign in to edit your profile', '#dc2626'); return; }
+    if (!auth || !auth.currentUser) { showToast('Please sign in to edit your profile', '#dc2626'); return; }
     openEditModal();
   });
 }
@@ -213,9 +219,23 @@ if (inputImage) {
   });
 }
 
+function openEditModal(){ if(!editModal) return; editModal.classList.remove('hidden'); editModal.classList.add('flex'); }
+function closeEditModal(){ if(!editModal) return; editModal.classList.add('hidden'); editModal.classList.remove('flex'); uploadedImageFile = null; if (inputImage) inputImage.value = ''; if (inputImageName) inputImageName.textContent = ''; }
+
+// image upload stub — adjust to your server endpoint if needed
+async function uploadToImageKitServer(file) {
+  if (!file) return null;
+  try {
+    const fd = new FormData(); fd.append('file', file);
+    const resp = await fetch('/imagekit-upload', { method: 'POST', body: fd });
+    if (!resp.ok) { const text = await resp.text().catch(()=> ''); throw new Error('Upload failed: '+resp.status+' '+text); }
+    const data = await resp.json(); return data.url || null;
+  } catch (err) { console.error('ImageKit upload error', err); throw err; }
+}
+
 if (saveProfileBtn) {
   saveProfileBtn.addEventListener('click', async () => {
-    if (!auth.currentUser) { showToast('Not signed in', '#dc2626'); return; }
+    if (!auth || !auth.currentUser) { showToast('Not signed in', '#dc2626'); return; }
     saveProfileBtn.disabled = true; const origText = saveProfileBtn.textContent; saveProfileBtn.textContent = 'Saving...';
     try {
       const uid = auth.currentUser.uid; const updates = {
@@ -252,9 +272,10 @@ if (saveProfileBtn) {
   });
 }
 
-//////////////////// Export helpers ////////////////////
+// ------------------------------ Exports (PDF/Doc/vCard) ------------------------------
+// collectProfilePayload, ensureJsPdf, exportProfileToPDF, exportProfileToDocx, vCard wiring
 function collectProfilePayload() {
-  if (!auth.currentUser) return null;
+  if (!auth || !auth.currentUser) return null;
   return {
     uid: auth.currentUser.uid,
     email: auth.currentUser.email,
@@ -285,8 +306,7 @@ async function ensureJsPdf() {
 }
 
 async function exportProfileToPDF() {
-  if (!auth.currentUser) { 
-    showToast('Sign in to export', '#dc2626'); return; }
+  if (!auth || !auth.currentUser) { showToast('Sign in to export', '#dc2626'); return; }
   const payload = collectProfilePayload();
   if (!payload) { showToast('No profile data', '#dc2626'); return; }
   try {
@@ -339,28 +359,17 @@ async function exportProfileToPDF() {
 }
 
 function exportProfileToDocx() {
-  if (!auth.currentUser) {
-     showToast('Sign in to export', '#dc2626'); return; }
-  const payload = collectProfilePayload(); if (!payload) {
-     showToast('No profile data', '#dc2626'); return; }
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${
-    escapeHtml(payload.displayName || 'Profile')}
-    </title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111827;padding:24px;}h1{font-size:20px;margin-bottom:6px}.meta{margin-bottom:12px;font-size:13px;color:#374151}.section{margin-bottom:10px}.label{font-weight:bold;color:#111827}.bio{white-space:pre-wrap;margin-top:6px;color:#111827}.avatar{float:right;margin-left:12px;width:120px;height:120px;object-fit:cover;border-radius:6px}</style></head><body>${payload.imageUrl?`<img src="${payload.imageUrl}" class="avatar"/>`:''}<h1>${escapeHtml(payload.displayName || (payload.firstName+' '+payload.lastName))}</h1><div class="meta">${payload.position?`<div><span class="label">Position:</span> ${escapeHtml(payload.position)}</div>`:''}${payload.schoolName?`<div><span class="label">School:</span> ${escapeHtml(payload.schoolName)} ${payload.yearHeld?('('+escapeHtml(payload.yearHeld)+')'):''}</div>`:''}${payload.association?`<div><span class="label">Association:</span> ${escapeHtml(payload.association)}</div>`:''}${payload.stateName?`<div><span class="label">State:</span> ${escapeHtml(payload.stateName)}</div>`:''}${payload.phone?`<div><span class="label">Phone:</span> ${escapeHtml(payload.phone)}</div>`:''}${payload.email?`<div><span class="label">Email:</span> ${escapeHtml(payload.email)}</div>`:''}</div>${payload.bio?`<div class="section"><div class="label">Bio</div><div class="bio">${escapeHtml(payload.bio)}</div></div>`:''}<div style="margin-top:24px;font-size:11px;color:#6b7280;">Exported: ${new Date().toLocaleString()}</div></body></html>`;
+  if (!auth || !auth.currentUser) { showToast('Sign in to export', '#dc2626'); return; }
+  const payload = collectProfilePayload(); if (!payload) { showToast('No profile data', '#dc2626'); return; }
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(payload.displayName || 'Profile')}</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111827;padding:24px;}h1{font-size:20px;margin-bottom:6px}.meta{margin-bottom:12px;font-size:13px;color:#374151}.section{margin-bottom:10px}.label{font-weight:bold;color:#111827}.bio{white-space:pre-wrap;margin-top:6px;color:#111827}.avatar{float:right;margin-left:12px;width:120px;height:120px;object-fit:cover;border-radius:6px}</style></head><body>${payload.imageUrl?`<img src="${payload.imageUrl}" class="avatar"/>`:''}<h1>${escapeHtml(payload.displayName || (payload.firstName+' '+payload.lastName))}</h1><div class="meta">${payload.position?`<div><span class="label">Position:</span> ${escapeHtml(payload.position)}</div>`:''}${payload.schoolName?`<div><span class="label">School:</span> ${escapeHtml(payload.schoolName)} ${payload.yearHeld?('('+escapeHtml(payload.yearHeld)+')'):''}</div>`:''}${payload.association?`<div><span class="label">Association:</span> ${escapeHtml(payload.association)}</div>`:''}${payload.stateName?`<div><span class="label">State:</span> ${escapeHtml(payload.stateName)}</div>`:''}${payload.phone?`<div><span class="label">Phone:</span> ${escapeHtml(payload.phone)}</div>`:''}${payload.email?`<div><span class="label">Email:</span> ${escapeHtml(payload.email)}</div>`:''}</div>${payload.bio?`<div class="section"><div class="label">Bio</div><div class="bio">${escapeHtml(payload.bio)}</div></div>`:''}<div style="margin-top:24px;font-size:11px;color:#6b7280;">Exported: ${new Date().toLocaleString()}</div></body></html>`;
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-  const filename = `${(payload.displayName || payload.email || 'profile')}
-  _profile.docx`.replace(/\s+/g,'_');
-  const url = URL.createObjectURL(blob);
-   const a = document.createElement('a');
-    a.href = url; a.download = filename; 
-    document.body.appendChild(a); a.click();
-     a.remove(); URL.revokeObjectURL(url); 
-     showToast('Word document exported.');
+  const filename = `${(payload.displayName || payload.email || 'profile')}_profile.docx`.replace(/\s+/g,'_');
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showToast('Word document exported.');
 }
 
-//////////////////// vCard export ////////////////////
 if (exportVcardBtn) {
   exportVcardBtn.addEventListener('click', (e)=>{
-    e.preventDefault(); if (!auth.currentUser) { showToast('Sign in to export', '#dc2626'); return; }
+    e.preventDefault(); if (!auth || !auth.currentUser) { showToast('Sign in to export', '#dc2626'); return; }
     const fullname = profileFullname?.textContent || '';
     const email = emailEl?.textContent || '';
     const phone = phoneEl?.textContent || '';
@@ -370,40 +379,160 @@ if (exportVcardBtn) {
   });
 }
 
-//////////////////// Wire Download button to present choice ////////////////////
 if (downloadBtn) {
   downloadBtn.addEventListener('click', async (e)=>{
-    e.preventDefault(); if (!auth.currentUser) { showToast('Sign in to export', '#dc2626'); return; }
+    e.preventDefault(); if (!auth || !auth.currentUser) { showToast('Sign in to export', '#dc2626'); return; }
     const useDoc = confirm('Click OK to download as Word (.docx). Click Cancel to download as PDF.');
     if (useDoc) exportProfileToDocx(); else await exportProfileToPDF();
   });
 }
 
-//////////////////// Sign out & nav handlers ////////////////////
+// ------------------------------ Sign out / menu wiring ------------------------------
 const signOutBtn = document.getElementById('desktop-sign-out');
 if (signOutBtn) {
   signOutBtn.addEventListener('click', async (e)=>{ e.preventDefault(); try { if (window.CampusLeaders && typeof window.CampusLeaders.signOutNow === 'function') { window.CampusLeaders.signOutNow(); } else { await auth.signOut(); showToast('Signed out.'); window.location.href = '/index.html'; } } catch (err) { console.error('Sign out failed', err); showToast('Sign out failed', '#dc2626'); } });
 }
-
 const userMenuButton = document.getElementById('user-menu-button');
 const userMenu = document.getElementById('user-menu');
 if (userMenuButton) {
   userMenuButton.addEventListener('click', (e)=>{ e.stopPropagation(); if (userMenu) userMenu.classList.toggle('hidden'); });
   document.addEventListener('click', (e)=>{ if (userMenu && !userMenu.contains(e.target) && !userMenuButton.contains(e.target)) userMenu.classList.add('hidden'); });
 }
-
-// fallback doSearch stub
 if (typeof doSearch !== 'function') window.doSearch = async function(q) { if (!q) return; alert('Search not available here.'); };
 
-//////////////////// POSTS GRID MODULE (single source for posts) ////////////////////
+// ------------------------------ fetchPostsByAuthor (robust) ------------------------------
+/**
+ * Robustly fetch posts by an author (tries multiple common author fields,
+ * falls back to client-side filtering if Firestore index errors occur).
+ *
+ * @param {string|null} authorId - preferred user UID (may be null)
+ * @param {string|null} authorEmail - optional email
+ * @param {number} limit - maximum items to return
+ * @returns {Promise<Array<Object>>}
+ */
+async function fetchPostsByAuthor(authorId, authorEmail = '', limit = 50) {
+  if (!db) {
+    console.warn('No Firestore (db) available in fetchPostsByAuthor');
+    return [];
+  }
+
+  const POSTS_COLLECTION = 'posts';
+  const resultsMap = new Map();
+  const maxLimit = Math.max(1, Math.min(limit || 50, 1000));
+
+  const pushSnap = (snap) => {
+    if (!snap || !snap.docs) return;
+    snap.docs.forEach(d => {
+      const data = { id: d.id, ...d.data() };
+      resultsMap.set(data.id, data);
+    });
+  };
+
+  // candidate queries in order of preference
+  const queriesToTry = [];
+  if (authorId) {
+    queriesToTry.push(() => db.collection(POSTS_COLLECTION).where('authorId','==',authorId).orderBy('createdAt','desc').limit(maxLimit).get());
+    queriesToTry.push(() => db.collection(POSTS_COLLECTION).where('authorUid','==',authorId).orderBy('createdAt','desc').limit(maxLimit).get());
+    queriesToTry.push(() => db.collection(POSTS_COLLECTION).where('uid','==',authorId).orderBy('createdAt','desc').limit(maxLimit).get());
+  }
+  if (authorEmail) {
+    const lower = (authorEmail||'').toLowerCase();
+    queriesToTry.push(() => db.collection(POSTS_COLLECTION).where('authorEmail','==', lower).orderBy('createdAt','desc').limit(maxLimit).get());
+    queriesToTry.push(() => db.collection(POSTS_COLLECTION).where('authorEmail','==', authorEmail).orderBy('createdAt','desc').limit(maxLimit).get());
+  }
+
+  // execute sequentially until results found
+  for (let qfn of queriesToTry) {
+    try {
+      const snap = await qfn();
+      if (snap && snap.docs && snap.docs.length) {
+        pushSnap(snap);
+        if (resultsMap.size >= Math.min(maxLimit, 50)) break;
+      }
+    } catch (err) {
+      console.warn('fetchPostsByAuthor query failed:', err && err.message ? err.message : err);
+      // continue to next fallback
+    }
+  }
+
+  if (resultsMap.size > 0) {
+    const arr = Array.from(resultsMap.values());
+    arr.sort((a,b)=>{
+      const ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : (a.createdAt ? new Date(a.createdAt).getTime()/1000 : 0);
+      const tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : (b.createdAt ? new Date(b.createdAt).getTime()/1000 : 0);
+      return tb - ta;
+    });
+    return arr.slice(0, maxLimit);
+  }
+
+  // final fallback: fetch recent and client-filter
+  try {
+    const snapAll = await db.collection(POSTS_COLLECTION).orderBy('createdAt','desc').limit(Math.max(100, maxLimit*5)).get();
+    const all = snapAll.docs.map(d=>({ id: d.id, ...d.data() }));
+    const lowerEmail = (authorEmail||'').toLowerCase();
+    const filtered = all.filter(p => {
+      if (!p) return false;
+      if (authorId && ((p.authorId && p.authorId === authorId) || (p.authorUid && p.authorUid === authorId) || (p.uid && p.uid === authorId))) return true;
+      if (authorEmail && ((p.authorEmail && (String(p.authorEmail).toLowerCase() === lowerEmail)) || (p.authorEmail === authorEmail))) return true;
+      return false;
+    });
+    return filtered.slice(0, maxLimit);
+  } catch (err) {
+    console.warn('fetchPostsByAuthor final fallback failed:', err);
+    return [];
+  }
+}
+
+// ------------------------------ populateAuthorSideList (for modal sidebar) ------------------------------
+/**
+ * Fill the author sidebar inside a modal with recent posts by the same author.
+ * - p: post object being displayed (should contain authorId/authorUid/authorEmail)
+ * - modalCard: DOM element representing the modal root which contains #post-author-list
+ */
+async function populateAuthorSideList(p, modalCard) {
+  if (!modalCard) return;
+  const listEl = modalCard.querySelector('#post-author-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="text-sm text-gray-500">Loading...</div>';
+  try {
+    const authorId = p.authorId || p.authorUid || p.uid || null;
+    const authorEmail = p.authorEmail || (p.author && p.author.email) || null;
+    const otherPosts = await fetchPostsByAuthor(authorId, authorEmail, 10);
+    listEl.innerHTML = '';
+    if (!otherPosts || otherPosts.length === 0) {
+      listEl.innerHTML = '<div class="text-sm text-gray-500">No other posts.</div>';
+      return;
+    }
+    otherPosts.forEach(op => {
+      const preview = document.createElement('div');
+      preview.className = 'p-2 rounded hover:bg-gray-50 cursor-pointer';
+      const title = escapeHtml(op.title || (op.body||'').slice(0,80));
+      const createdAt = op.createdAt && op.createdAt.toDate ? op.createdAt.toDate() : (op.createdAt ? new Date(op.createdAt) : new Date());
+      preview.innerHTML = `<div class="font-medium text-sm">${title}</div><div class="text-xs text-gray-500">${escapeHtml(timeSince(createdAt))}</div>`;
+      preview.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        // provide a global open function for posts (below)
+        if (window.ProfilePosts && typeof window.ProfilePosts.open === 'function') {
+          window.ProfilePosts.open(op.id);
+        } else {
+          console.warn('ProfilePosts.open not available - cannot open post by id');
+        }
+      });
+      listEl.appendChild(preview);
+    });
+  } catch (err) {
+    console.warn('Failed to load author posts for sidebar:', err);
+    listEl.innerHTML = '<div class="text-sm text-gray-500">Failed to load.</div>';
+  }
+}
+
+// ------------------------------ Posts Grid Module ------------------------------
 (function PostsModule(){
-  // DOM refs for posts grid + modal
-  const grid = document.getElementById('user-posts-grid'); // IG-style grid (primary)
-  const postsLoading = document.getElementById('posts-loading');
-  const noPostsEl = document.getElementById('no-posts');
+  const grid = document.getElementById(POSTS_GRID_ID);
+  const postsLoading = document.getElementById(POSTS_LOADING_ID);
+  const noPostsEl = document.getElementById(NO_POSTS_ID);
   const refreshBtn = document.getElementById('refresh-posts-btn');
 
-  // modal refs
   const modal = document.getElementById('post-modal');
   const modalClose = document.getElementById('modal-close-btn');
   const modalDelete = document.getElementById('modal-delete-btn');
@@ -412,11 +541,9 @@ if (typeof doSearch !== 'function') window.doSearch = async function(q) { if (!q
   const modalImage = document.getElementById('modal-post-image');
   const modalBody = document.getElementById('modal-post-body');
 
-  let localCurrentUser = null;
-  let postsCache = []; // locally cached posts for the grid
+  let postsCache = [];
   let currentDisplayedPost = null;
 
-  // Render the grid of square tiles
   function renderGrid(posts){
     postsCache = posts || [];
     if(!grid) return;
@@ -428,15 +555,11 @@ if (typeof doSearch !== 'function') window.doSearch = async function(q) { if (!q
     }
     noPostsEl && noPostsEl.classList.add('hidden');
     if(postsLoading) postsLoading.classList.add('hidden');
-
-    // create tiles
     posts.forEach(p => {
       const tile = document.createElement('button');
       tile.type = 'button';
       tile.className = 'relative rounded overflow-hidden aspect-square bg-gray-200 flex items-end justify-start p-2 focus:outline-none';
       tile.title = p.title || 'View post';
-
-      // background image if present
       const bg = p.imageUrl ? escapeHtml(normalizeImgurUrl(p.imageUrl)) : '';
       if (bg) {
         tile.style.backgroundImage = `url('${bg}')`;
@@ -444,11 +567,8 @@ if (typeof doSearch !== 'function') window.doSearch = async function(q) { if (!q
         tile.style.backgroundPosition = 'center';
         tile.style.backgroundRepeat = 'no-repeat';
       } else {
-        // placeholder content
         tile.style.backgroundColor = '#f3f4f6';
       }
-
-      // overlay (dark gradient + title)
       const overlay = document.createElement('div');
       overlay.className = 'absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-2 flex items-end';
       overlay.style.pointerEvents = 'none';
@@ -457,38 +577,31 @@ if (typeof doSearch !== 'function') window.doSearch = async function(q) { if (!q
       titleWrap.textContent = p.title || '';
       overlay.appendChild(titleWrap);
       tile.appendChild(overlay);
-
       tile.addEventListener('click', ()=> openModalForPost(p.id));
       grid.appendChild(tile);
     });
   }
 
-  // Open and populate modal
   async function openModalForPost(postId){
-    // find post in postsCache
+    // try to find in cache
     const post = postsCache.find(x => x.id === postId);
     if(!post){
-      // fetch single doc
       try {
         const doc = await db.collection('posts').doc(postId).get();
         if(!doc.exists) return alert('Post not found');
         currentDisplayedPost = { id: doc.id, ...doc.data() };
-      }catch(err){
-        console.error(err);
+      } catch (err) {
+        console.error('Failed fetching post', err);
         return alert('Failed fetching post');
       }
-    } else {
-      currentDisplayedPost = post;
-    }
+    } else currentDisplayedPost = post;
 
-    // populate modal
     modalTitle && (modalTitle.textContent = currentDisplayedPost.title || '(no title)');
     const createdAt = currentDisplayedPost.createdAt && currentDisplayedPost.createdAt.seconds
       ? new Date(currentDisplayedPost.createdAt.seconds * 1000)
       : (currentDisplayedPost.createdAt ? new Date(currentDisplayedPost.createdAt) : null);
     modalMeta && (modalMeta.textContent = createdAt ? `${createdAt.toLocaleString()}` : '');
-
-    if(modalImage) {
+    if (modalImage) {
       modalImage.src = currentDisplayedPost.imageUrl ? normalizeImgurUrl(currentDisplayedPost.imageUrl) : '';
       modalImage.alt = currentDisplayedPost.title || 'post image';
     }
@@ -496,39 +609,30 @@ if (typeof doSearch !== 'function') window.doSearch = async function(q) { if (!q
 
     // show modal
     modal && modal.classList.remove('hidden');
-    // trap escape to close
+
+    // populate author sidebar if present
+    try {
+      const modalCard = document.querySelector('#post-modal');
+      if (modalCard) populateAuthorSideList(currentDisplayedPost, modalCard);
+    } catch (e) { /* ignore sidebar failures */ }
+
     document.addEventListener('keydown', escToClose);
   }
 
-  function closeModal(){
-    modal && modal.classList.add('hidden');
-    currentDisplayedPost = null;
-    document.removeEventListener('keydown', escToClose);
-  }
+  function closeModal(){ modal && modal.classList.add('hidden'); currentDisplayedPost = null; document.removeEventListener('keydown', escToClose); }
   function escToClose(e){ if(e.key === 'Escape') closeModal(); }
 
-  // Delete current displayed post
   async function deleteCurrentPost(){
     if(!currentDisplayedPost) return;
     if(!confirm('Delete this post permanently? This cannot be undone.')) return;
-
     const id = currentDisplayedPost.id;
     try{
-      // If the post references a firebase storage path (imagePath) attempt to remove it
       if(currentDisplayedPost.imagePath && storage){
-        try{
-          // storage.refFromURL accepts gs:// and https://firebasestorage...
-          await storage.refFromURL(currentDisplayedPost.imagePath).delete();
-        }catch(e){
-          // try deleting by storage.ref(fullPath)
-          try{ await storage.ref(currentDisplayedPost.imagePath).delete(); }catch(e2){ /* ignore */ }
-        }
+        try{ await storage.refFromURL(currentDisplayedPost.imagePath).delete(); }catch(e){ try{ await storage.ref(currentDisplayedPost.imagePath).delete(); }catch(e2){ /* ignore */ } }
       }
-      // Delete the post document
       await db.collection('posts').doc(id).delete();
       showToast('Post deleted');
       closeModal();
-      // remove locally and re-render
       postsCache = postsCache.filter(p=>p.id !== id);
       renderGrid(postsCache);
     }catch(err){
@@ -537,85 +641,44 @@ if (typeof doSearch !== 'function') window.doSearch = async function(q) { if (!q
     }
   }
 
-  // Show posts from Firestore for the signed-in user
-  async function loadUserPosts(forceEmailFallback = true, userOverride = null){
-    localCurrentUser = userOverride || auth.currentUser;
+  async function reloadUserPosts(forceEmailFallback = true, userOverride = null) {
+    const localUser = userOverride || (auth ? auth.currentUser : null);
     if(!grid) return;
-    if(postsLoading) postsLoading.classList.remove('hidden');
+    if (postsLoading) postsLoading.classList.remove('hidden');
     noPostsEl && noPostsEl.classList.add('hidden');
     grid.innerHTML = '';
-
-    try{
-      if(!localCurrentUser){
-        grid.innerHTML = '<div class="col-span-3 p-4 text-sm text-gray-500">Sign in to view your posts.</div>';
-        if(postsLoading) postsLoading.classList.add('hidden');
-        return;
-      }
-
-      // Preferred query: authorUid (fast & secure)
-      let snap = null;
-      try{
-        snap = await db.collection('posts')
-          .where('authorUid','==', localCurrentUser.uid)
-          .orderBy('createdAt','desc')
-          .limit(200)
-          .get();
-      }catch(e){
-        console.warn('authorUid query failed (maybe no index) — falling back', e);
-        snap = null;
-      }
-
-      if(snap && snap.docs && snap.docs.length > 0){
-        const posts = snap.docs.map(d=>({ id: d.id, ...d.data() }));
-        renderGrid(posts);
-        return;
-      }
-
-      // Fallback: authorEmail
-      if(forceEmailFallback && localCurrentUser.email){
-        try{
-          const snap2 = await db.collection('posts').where('authorEmail','==', (localCurrentUser.email||'').toLowerCase()).orderBy('createdAt','desc').limit(200).get();
-          if(snap2 && snap2.docs.length){
-            const posts = snap2.docs.map(d=>({ id: d.id, ...d.data() }));
-            renderGrid(posts);
-            return;
-          }
-        }catch(e){
-          console.warn('authorEmail query failed, will try client-side filtering', e);
-          // fetch recent posts then filter client-side (safe for moderate dataset)
-          const snapAll = await db.collection('posts').orderBy('createdAt','desc').limit(500).get();
-          const posts = snapAll.docs.map(d=>({ id: d.id, ...d.data() })).filter(p => (p.authorEmail || '').toLowerCase() === (localCurrentUser.email||'').toLowerCase());
-          renderGrid(posts);
-          return;
-        }
-      }
-
-      // If nothing found
-      renderGrid([]);
-    }catch(err){
-      console.error('Error loading posts', err);
+    if (!localUser) {
+      grid.innerHTML = '<div class="col-span-3 p-4 text-sm text-gray-500">Sign in to view your posts.</div>';
+      if (postsLoading) postsLoading.classList.add('hidden');
+      return;
+    }
+    try {
+      const authorId = localUser.uid;
+      const authorEmail = localUser.email || null;
+      const posts = await fetchPostsByAuthor(authorId, authorEmail, 200);
+      renderGrid(posts);
+    } catch (err) {
+      console.error('reloadUserPosts failed', err);
       grid.innerHTML = '<div class="col-span-3 p-4 text-sm text-red-500">Unable to load your posts.</div>';
     } finally {
-      if(postsLoading) postsLoading.classList.add('hidden');
+      if (postsLoading) postsLoading.classList.add('hidden');
     }
   }
 
-  // Wire modal buttons and refresh
+  // wire modal and refresh handlers
   modalClose && modalClose.addEventListener('click', closeModal);
-  modal && modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
+  modal && modal.addEventListener('click', (e)=>{ if (e.target === modal) closeModal(); });
   modalDelete && modalDelete.addEventListener('click', deleteCurrentPost);
-  refreshBtn && refreshBtn.addEventListener('click', ()=> loadUserPosts(true, auth.currentUser));
+  refreshBtn && refreshBtn.addEventListener('click', ()=> reloadUserPosts(true, auth ? auth.currentUser : null));
 
-  // Expose public API
+  // expose API
   window.ProfilePosts = {
-    reload: (forceEmailFallback = true, userOverride = null) => loadUserPosts(forceEmailFallback, userOverride)
+    reload: reloadUserPosts,
+    open: openModalForPost
   };
 })(); // end PostsModule
 
-//////////////////// Backwards-compatible (optional) basic list renderer ////////////////////
-// If you have an older `renderPost` function or list area, we keep a lightweight loader that can be used
-// for the small "Activity" section. By default the profile uses the grid; this function is here if you
-// want to keep the older vertical list view elsewhere.
+// ------------------------------ Backwards-compatible legacy loader ------------------------------
 async function loadProfilePostsLegacy(user) {
   if (!profileActivityPosts) return;
   profileActivityPosts.innerHTML = '<div class="text-sm text-gray-500">Loading your posts...</div>';
@@ -636,8 +699,8 @@ async function loadProfilePostsLegacy(user) {
         const map = new Map();
         snaps.forEach(snap => { if (!snap) return; snap.docs.forEach(d => { const data = { id: d.id, ...d.data() }; if (!map.has(data.id)) map.set(data.id, data); }); });
         posts = Array.from(map.values()).sort((a,b)=>{
-          const ta = a.createdAt ? (a.createdAt.seconds||new Date(a.createdAt).getTime()/1000):0;
-          const tb = b.createdAt ? (b.createdAt.seconds||new Date(b.createdAt).getTime()/1000):0;
+          const ta = a.createdAt ? (a.createdAt.seconds|| new Date(a.createdAt).getTime()/1000):0;
+          const tb = b.createdAt ? (b.createdAt.seconds|| new Date(b.createdAt).getTime()/1000):0;
           return tb-ta;
         }).slice(0,50);
       }
@@ -665,22 +728,23 @@ async function loadProfilePostsLegacy(user) {
   }
 }
 
-//////////////////// Single auth.onAuthStateChanged (top-level) ////////////////////
-auth.onAuthStateChanged(async (user) => {
-  if (user) await populateProfile(user);
-  else await populateProfile(null);
+// ------------------------------ Top-level auth state wiring ------------------------------
+if (auth) {
+  auth.onAuthStateChanged(async (user) => {
+    try { if (user) await populateProfile(user); else await populateProfile(null); } catch(e){ console.warn('populateProfile failed', e); }
 
-  // Load the posts grid (primary)
-  if (window.ProfilePosts && typeof window.ProfilePosts.reload === 'function') {
-    try { await window.ProfilePosts.reload(true, user); } catch(e){ console.warn('ProfilePosts.reload failed', e); }
-  } else {
-    // fallback to legacy loader
-    try { await loadProfilePostsLegacy(user); } catch(e){ console.warn('legacy posts load failed', e); }
-  }
+    // primary: reload posts grid
+    if (window.ProfilePosts && typeof window.ProfilePosts.reload === 'function') {
+      try { await window.ProfilePosts.reload(true, user); } catch(e){ console.warn('ProfilePosts.reload failed', e); }
+    } else {
+      // fallback to legacy loader if grid not available
+      try { await loadProfilePostsLegacy(user); } catch(e){ console.warn('legacy posts load failed', e); }
+    }
 
-  // Small re-populate to ensure UI fields update after possible async fetches
-  setTimeout(() => { try { populateProfile(user); } catch (e) {} }, 350);
-});
+    setTimeout(() => { try { populateProfile(user); } catch (e) {} }, 350);
+  });
+} else {
+  console.warn('Firebase Auth not available - profile functionality limited.');
+}
 
-//////////////////// End of file ////////////////////
-
+// ------------------------------ End of file ------------------------------
