@@ -12,6 +12,11 @@ const FIREBASE_CONFIG = {
   appId: "1:445360528951:web:712da8859c8ac4cb6129b2"
 };
 
+// UPLOADCARE settings (matches sign.js)
+const UPLOADCARE_PUBLIC_KEY = "2683b7806064b3db73e3";
+const UPLOADCARE_BASE_UPLOAD = "https://upload.uploadcare.com/base/";
+const UPLOADCARE_CDN = "https://12hsb3bgrj.ucarecd.net/";
+
 // Init firebase once
 if (window.firebase && FIREBASE_CONFIG && FIREBASE_CONFIG.projectId) {
   try { if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); } catch (e) { console.warn('Firebase init error', e); }
@@ -222,15 +227,31 @@ if (inputImage) {
 function openEditModal(){ if(!editModal) return; editModal.classList.remove('hidden'); editModal.classList.add('flex'); }
 function closeEditModal(){ if(!editModal) return; editModal.classList.add('hidden'); editModal.classList.remove('flex'); uploadedImageFile = null; if (inputImage) inputImage.value = ''; if (inputImageName) inputImageName.textContent = ''; }
 
-// image upload stub — adjust to your server endpoint if needed
+// image upload to Uploadcare (matches sign.js)
 async function uploadToImageKitServer(file) {
-  if (!file) return null;
-  try {
-    const fd = new FormData(); fd.append('file', file);
-    const resp = await fetch('/imagekit-upload', { method: 'POST', body: fd });
-    if (!resp.ok) { const text = await resp.text().catch(()=> ''); throw new Error('Upload failed: '+resp.status+' '+text); }
-    const data = await resp.json(); return data.url || null;
-  } catch (err) { console.error('ImageKit upload error', err); throw err; }
+  if (!UPLOADCARE_PUBLIC_KEY) throw new Error('Uploadcare public key not set');
+  const form = new FormData();
+  form.append('file', file);
+  form.append('UPLOADCARE_PUB_KEY', UPLOADCARE_PUBLIC_KEY);
+  form.append('UPLOADCARE_STORE', '1'); // store and make available on CDN
+
+  const resp = await fetch(UPLOADCARE_BASE_UPLOAD, {
+    method: 'POST',
+    body: form
+  });
+
+  const data = await resp.json();
+  if (!resp.ok) {
+    const msg = data?.error?.message || data?.detail || data?.message || JSON.stringify(data);
+    throw new Error('Uploadcare upload failed: ' + msg);
+  }
+
+  // data.file contains uuid/path. Build CDN URL.
+  const fileId = (data && data.file) ? String(data.file).replace(/^\/+|\/+$/g, '') : null;
+  if (!fileId) throw new Error('Uploadcare did not return file id');
+  // Ensure trailing slash for consistent usage
+  const cdnUrl = `${UPLOADCARE_CDN.replace(/\/+$/,'')}/${fileId}/`;
+  return cdnUrl;
 }
 
 if (saveProfileBtn) {

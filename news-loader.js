@@ -188,12 +188,26 @@
       if(!items || items.length === 0){
         list.innerHTML = '<div class="text-sm text-white p-2">No news</div>'; return;
       }
-      items.forEach(n=>{
+      
+      // Show minimum 6 items by default
+      const minItems = 6;
+      const showInitially = Math.min(minItems, items.length);
+      
+      // Create container for news items
+      const newsContainer = document.createElement('div');
+      newsContainer.className = 'news-items-container';
+      
+      items.forEach((n, idx)=>{
         const a = document.createElement('a');
         a.href = '/news.html?id='+encodeURIComponent(n.id);
         // flex row: image on left, text on right
-        a.className = 'block p-2 rounded hover:bg-white/10';
+        a.className = 'block p-2 rounded hover:bg-white/10 news-item';
         a.style.textDecoration = 'none';
+        // Hide items beyond the initial 6
+        if(idx >= showInitially){
+          a.style.display = 'none';
+          a.classList.add('hidden-news-item');
+        }
         a.innerHTML = `
           <div class="flex items-start gap-3">
             <div class="flex-shrink-0">
@@ -205,8 +219,31 @@
             </div>
           </div>
         `;
-        list.appendChild(a);
+        newsContainer.appendChild(a);
       });
+      
+      list.appendChild(newsContainer);
+      
+      // Add "Show All" button if there are more items than the minimum
+      if(items.length > minItems){
+        const showAllBtn = document.createElement('button');
+        showAllBtn.className = 'mt-4 text-white hover:text-blue-400 text-sm underline cursor-pointer';
+        showAllBtn.textContent = 'Show All';
+        showAllBtn.style.background = 'none';
+        showAllBtn.style.border = 'none';
+        showAllBtn.style.padding = '0.5rem 0.5rem';
+        showAllBtn.style.textDecoration = 'underline';
+        showAllBtn.addEventListener('click', (e)=>{
+          e.preventDefault();
+          // Show all hidden news items
+          newsContainer.querySelectorAll('.hidden-news-item').forEach(item => {
+            item.style.display = 'block';
+          });
+          // Hide the button after clicking
+          showAllBtn.style.display = 'none';
+        });
+        list.appendChild(showAllBtn);
+      }
     });
   }
 
