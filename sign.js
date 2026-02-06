@@ -805,7 +805,7 @@ const STORAGE_ASSOC_KEY = 'campus_assoc_list_v1';
 function loadAssociationsLocal() {
   let arr = JSON.parse(localStorage.getItem(STORAGE_ASSOC_KEY) || '[]');
   if (arr.length === 0) {
-    arr = ['Student Union', 'Debate Club', 'Basketball Club', 'Science Club'];
+    arr = ['Student Union', 'Debate Club', 'Basketball Club', 'Science Club', 'National Association of Nigerian Students (NANS)'];
     localStorage.setItem(STORAGE_ASSOC_KEY, JSON.stringify(arr));
   }
   return arr;
