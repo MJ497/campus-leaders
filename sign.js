@@ -24,6 +24,17 @@ const ADMIN_EMAILS = [
   // add admin emails (lowercase)
   'campusleader@gmail.com'
 ];
+// ========== default associations list (like stateSchools) ==========
+const defaultAssociations = [
+  'Student Union',
+  'Debate Club',
+  'Basketball Club',
+  'Science Club',
+  'National Association of Nigerian Students (NANS)'
+ 
+ 
+];
+
 
 // ========== keep the stateSchools object EXACTLY as you provided ==========
 const stateSchools = {
@@ -800,23 +811,9 @@ stateSelect.addEventListener('change', () => {
   loadAssociationsForSchool();
 });
 
-// associations stored in localStorage (preserve your behavior)
-const STORAGE_ASSOC_KEY = 'campus_assoc_list_v1';
-function loadAssociationsLocal() {
-  let arr = JSON.parse(localStorage.getItem(STORAGE_ASSOC_KEY) || '[]');
-  if (arr.length === 0) {
-    arr = ['Student Union', 'Debate Club', 'Basketball Club', 'Science Club', 'National Association of Nigerian Students (NANS)'];
-    localStorage.setItem(STORAGE_ASSOC_KEY, JSON.stringify(arr));
-  }
-  return arr;
-}
+// associations loaded from Firestore only (no localStorage)
 function populateAssocSelectWithLocal() {
-  const arr = loadAssociationsLocal();
   assocSelect.innerHTML = '<option value="">Select association (or Add new)</option>';
-  arr.forEach(a => {
-    const opt = document.createElement('option'); opt.value = a; opt.textContent = a;
-    assocSelect.appendChild(opt);
-  });
 }
 populateAssocSelectWithLocal();
 
@@ -826,16 +823,20 @@ populateAssocSelectWithLocal();
  * Wait until Firebase init is ready (USE_FIREBASE && db) or timeout.
  * Resolves true if ready, false on timeout.
  */
-async function waitForFirebaseReady(timeoutMs = 8000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    if (typeof USE_FIREBASE !== 'undefined' && USE_FIREBASE && typeof db !== 'undefined' && db) {
-      return true;
-    }
-    await new Promise(r => setTimeout(r, 120));
-  }
-  return false;
+// associations loaded from default array + Firestore
+function populateAssocSelectWithLocal() {
+  assocSelect.innerHTML = '<option value="">Select association (or Add new)</option>';
+  defaultAssociations.forEach(a => {
+    const opt = document.createElement('option'); opt.value = a; opt.textContent = a;
+    assocSelect.appendChild(opt);
+  });
 }
+// populateAssocSelectWithLocal();
+//     }
+//     await new Promise(r => setTimeout(r, 120));
+//   }
+//   return false;
+// }
 
 /**
  * Save association to Firestore when Firebase becomes available.
@@ -885,7 +886,7 @@ try {
   });
 } catch (e) { console.warn('assocAddBtn wiring error', e); }
 
-// Handle Enter on assocNewInput: save locally + attempt Firestore persist
+// Handle Enter on assocNewInput: save to Firestore and reload from Firestore
 try {
   assocNewInput && assocNewInput.addEventListener('keydown', async (e) => {
     if (e.key !== 'Enter') return;
@@ -897,24 +898,15 @@ try {
       return;
     }
 
-    // Save locally (existing behavior)
-    const arr = JSON.parse(localStorage.getItem(STORAGE_ASSOC_KEY) || '[]');
-    if (!arr.includes(name)) {
-      arr.push(name);
-      localStorage.setItem(STORAGE_ASSOC_KEY, JSON.stringify(arr));
-    }
-
-    // Refresh the select (local first)
-    populateAssocSelectWithLocal();
-    assocSelect.value = name;
+    // Clear input and hide
     assocNewInput.value = '';
     assocNewInput.classList.add('hidden');
 
-    // Attempt to persist to Firestore (non-blocking). This will wait for Firebase init if needed.
+    // Persist to Firestore and reload associations from Firestore
     saveAssociationToFirestore(name, { state: stateSelect?.value || null, school: schoolSelect?.value || null })
       .catch(err => console.warn('saveAssociationToFirestore uncaught error:', err));
 
-    // If school is selected, reload associations from Firestore to include any server-side entries
+    // Reload associations from Firestore to include the new entry
     try { loadAssociationsForSchool(); } catch (err) { /* ignore */ }
   });
 } catch (e) { console.warn('assocNewInput wiring error', e); }
@@ -1073,19 +1065,10 @@ signupForm && signupForm.addEventListener('submit', async (e) => {
 
       // If the user typed a new association in the add input, prefer that
       if (typed) {
-        // save locally if missing (keeps previous behavior)
-        const arr = JSON.parse(localStorage.getItem(STORAGE_ASSOC_KEY) || '[]');
-        if (!arr.includes(typed)) {
-          arr.push(typed);
-          localStorage.setItem(STORAGE_ASSOC_KEY, JSON.stringify(arr));
-        }
-        // update UI select so it reflects the new value
-        populateAssocSelectWithLocal();
-        assocSelect.value = typed;
         // set payload association to typed value
         payload.association = typed;
 
-        // attempt to persist to Firestore (non-blocking). This will wait for Firebase init if needed.
+        // persist to Firestore. This will wait for Firebase init if needed.
         saveAssociationToFirestore(typed, { state: payload.state || null, school: payload.school || null })
           .catch(err => console.warn('saveAssociationToFirestore uncaught error at signup:', err));
       } else if (picked) {
