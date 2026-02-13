@@ -29,8 +29,7 @@ const defaultAssociations = [
   'Student Union',
   'Debate Club',
   'Basketball Club',
-  'Science Club',
-  'National Association of Nigerian Students (NANS)'
+  'Science Club'
  
  
 ];
@@ -39,6 +38,8 @@ const defaultAssociations = [
 // ========== keep the stateSchools object EXACTLY as you provided ==========
 const stateSchools = {
   "Abia": [
+    
+  'National Association of Nigerian Students (NANS)',
     "Michael Okpara University of Agricultural Umudike",
     "Abia State University, Uturu",
     "Gregory University, Uturu",
@@ -56,6 +57,8 @@ const stateSchools = {
     "College of Education, Arochukwu, Abia"
   ],
   "Adamawa": [
+        
+  'National Association of Nigerian Students (NANS)',
     "Modibbo Adama University of Technology, Yola",
     "Adamawa State University Mubi",
     "American University of Nigeria, Yola",
@@ -65,6 +68,8 @@ const stateSchools = {
     "Adamawa State College of Education, Hong"
   ],
   "Akwa Ibom": [
+        
+  'National Association of Nigerian Students (NANS)',
     "University of Uyo",
     "Akwa Ibom State University, Ikot Akpaden",
     "Obong University, Obong Ntak",
@@ -79,6 +84,8 @@ const stateSchools = {
     "Federal Polytechnic Ukana"
   ],
   "Anambra": [
+        
+  'National Association of Nigerian Students (NANS)',
     "Nnamdi Azikiwe University, Awka",
     "Chukwuemeka Odumegwu Ojukwu University, Uli",
     "Madonna University, Okija",
@@ -91,6 +98,8 @@ const stateSchools = {
     "Nwafor Orizu College of Education, Nsugbe"
   ],
   "Bauchi": [
+        
+  'National Association of Nigerian Students (NANS)',
     "Abubakar Tafawa Balewa University, Bauchi",
     "Bauchi State University, Gadau",
     "Federal Polytechnic Bauchi, (FPTB)",
@@ -111,6 +120,8 @@ const stateSchools = {
     "Aminu Sale College of Education, Azare"
   ],
   "Bayelsa": [
+        
+  'National Association of Nigerian Students (NANS)',
     "Federal University, Otuoke",
     "Niger Delta University Yenagoa",
     "University of Africa Toru Orua",
@@ -120,6 +131,8 @@ const stateSchools = {
     "Isaac Jasper Boro College of Education (COE), Sagbama"
   ],
   "Benue": [
+        
+  'National Association of Nigerian Students (NANS)',
     "University of Agriculture, Makurdi",
     "University of Health Technology, Otukpo Benue State",
     "Benue State University, Makurdi",
@@ -134,6 +147,8 @@ const stateSchools = {
     "Gboko College Of Education"
   ],
   "Borno": [
+        
+  'National Association of Nigerian Students (NANS)',
     "University of Maiduguri",
     "Nigerian Army University Biu",
     "Bornu State University, Maiduguri",
@@ -145,6 +160,8 @@ const stateSchools = {
     "Umar Ibn Ibrahim El-Kanemi College of Education, Science and Technology, Bama"
   ],
   "Cross River": [
+        
+  'National Association of Nigerian Students (NANS)',
     "University of Calabar",
     "University of Cross River State",
     "Havilla University, Nde-Ikom",
@@ -162,6 +179,8 @@ const stateSchools = {
     "Federal College of Education, Obudu"
   ],
   "Delta": [
+        
+  'National Association of Nigerian Students (NANS)',
     "Federal University of Petroleum Resources, Effurun",
     "Nigerian Maritime University Okerenkoko, Delta State",
     "Delta State University Abraka",
@@ -189,7 +208,8 @@ const stateSchools = {
     "Conarina School of Maritime & Transport Technology, Oria-Abraka"
   ],
   "Ebonyi": [
-   
+       
+  'National Association of Nigerian Students (NANS)',
   
     "Alex Ekwueme University, Ndufu-Alike, Ebonyi State",
     "Ebonyi State University, Abakaliki",
@@ -200,6 +220,8 @@ const stateSchools = {
     "Ebonyi State College of Education"
   ],
   "Edo": [
+        
+  'National Association of Nigerian Students (NANS)',
     "University of Benin",
     "Ambrose Alli University, Ekpoma",
     "Edo State University Uzairue",
@@ -220,6 +242,8 @@ const stateSchools = {
     "Edo State College of Education, Igueben"
   ],
   "Ekiti": [
+        
+  'National Association of Nigerian Students (NANS)',
     "Federal University, Oye-Ekiti",
     "Ekiti State University",
     "Bamidele Olumilua University of Education, Science and Technology",
@@ -230,6 +254,8 @@ const stateSchools = {
     "Crown Polytechnic"
   ],
   "Enugu": [
+        
+  'National Association of Nigerian Students (NANS)',
     "University of Nigeria, Nsukka",
     "Enugu State University of Science and Technology",
     "Enugu State University of Medical and Applied Sciences",
@@ -249,6 +275,8 @@ const stateSchools = {
     "Institute of Ecumenical Education (Thinkers Corner)"
   ],
   "Gombe": [
+        
+  'National Association of Nigerian Students (NANS)',
   'Gombe State University, Gombe',
   'Gombe State Polytechnic Bajoga',
   'Gombe State University of Science and Technology',
@@ -261,8 +289,8 @@ const stateSchools = {
   'Abubakar Garba Zagada- Zagada College of Education, Bajoga',
   'Gombe State College for Legal and Islamic Studies Nafada'
   ],
-  "Imo": [
-    
+  "Imo": [    
+  'National Association of Nigerian Students (NANS)',
 'Federal University of Technology, Owerri',
 'Imo State University, Owerri',
 'Kingsley Ozumba Mbadiwe University Ogboko',
@@ -278,6 +306,8 @@ const stateSchools = {
 'Imo State Col. of Health and Mgt Sciences'
   ],
   "Jigawa": [
+        
+  'National Association of Nigerian Students (NANS)',
     "Federal University, Dutse",
     "Sule Lamido University, Kafin Hausa",
     "Khadija University, Majia",
@@ -288,7 +318,8 @@ const stateSchools = {
     "Jigawa State College of Education and Legal Studies, Ringim",
     "Kazaure College of Education"
   ],
-  "Kaduna": [
+  "Kaduna": [    
+  'National Association of Nigerian Students (NANS)',
    "Ahmadu Bello University, Zaria",
    "Nigerian Defence Academy Kaduna",
    "Air Force Institute of Technology",
@@ -305,7 +336,8 @@ const stateSchools = {
    'Kaduna State College of Education, Gidan-Waya, Kafanchan',
    'Federal College of Education, Zaria'
   ],
-  "Kano": [
+  "Kano": [    
+  'National Association of Nigerian Students (NANS)',
   "Bayero University, Kano",
   "Nigeria Police Academy Wudil",
   "Kano University of Science & Technology, Wudil",
@@ -333,7 +365,8 @@ const stateSchools = {
   "Sa’adatu Rimi College of Education, Kumbotso, Kano",
   "Federal College of Education (Technical), Bichi"
   ],
-  "Katsina": [
+  "Katsina": [    
+  'National Association of Nigerian Students (NANS)',
     "Federal University, Dutsin-Ma",
     "Umar Musa Yar’ Adua University",
     "Al-Qalam University, Katsina",
@@ -344,14 +377,16 @@ const stateSchools = {
     "Isa Kaita College of Education, Dutsin-Ma",
     "Federal College of Education, Katsina"
   ],
-  "Kebbi": [
+  "Kebbi": [    
+  'National Association of Nigerian Students (NANS)',
     "Federal University, Birnin Kebbi",
     "Kebbi State University of Science and Technology",
     "Waziri Umaru Federal Polytechnic (WUFPBK)",
     "Kebbi State Polytechnic (KESPODAK)",
     "Adamu Augie College of Education, Argungu"
   ],
-  "Kogi": [
+  "Kogi": [    
+  'National Association of Nigerian Students (NANS)',
     "Kogi State College of Education, Kabba",
     "Al-Hikma College Of Education, Ankpa",
     "Kogi East College of Education",
@@ -366,7 +401,8 @@ const stateSchools = {
     "Kogi State Polytechnic",
     "Prime Polytechnic"
   ],
-  "Kwara": [
+  "Kwara": [    
+  'National Association of Nigerian Students (NANS)',
    "Federal Polytechnic Offa",
 "Kwara State Polytechnic",
 "Graceland Polytechnic",
@@ -396,7 +432,8 @@ const stateSchools = {
 " Kwara State College of Education, Ilorin",
 " Nigerian Army School of Education (NASE), Ilorin"
   ],
-  "Lagos": [
+  "Lagos": [    
+  'National Association of Nigerian Students (NANS)',
     "University of Lagos",
     "Lagos State University",
     "Lagos State University of Education",
@@ -428,7 +465,8 @@ const stateSchools = {
     "Michael Otedola College of Primary Education, Lagos",
     "St. Augustine College of Education Akoka"
   ],
-  "Nasarawa": [
+  "Nasarawa": [    
+  'National Association of Nigerian Students (NANS)',
     "Federal University, Lafia",
     "Nasarawa State University Keffi",
     "Ave Maria University, Piyanko",
@@ -444,7 +482,8 @@ const stateSchools = {
     "JIBWIS College of Education, Keffi",
     "Innovative College of Education, Karu"
   ],
-  "Niger": [
+  "Niger": [    
+  'National Association of Nigerian Students (NANS)',
     "Federal University of Technology, Minna",
     "Ibrahim Badamasi Babangida University, Lapai",
     "Edusoko University, Bida",
@@ -455,7 +494,8 @@ const stateSchools = {
     "Federal College of Education, Kontagora",
     "Niger State College of Education, Minna"
   ],
-  "Ogun": [
+  "Ogun": [    
+  'National Association of Nigerian Students (NANS)',
     "Yewa Central College of Education, Ayetoro, Abeokuta",
     "Royal City College of Education, Iyesi-Ota",
     "Awori District College of Education",
@@ -491,7 +531,8 @@ const stateSchools = {
     "Moshood Abiola Polytechnic",
     "Gateway Polytechnic"
   ],
-  "Ondo": [
+  "Ondo": [    
+  'National Association of Nigerian Students (NANS)',
     "Rufus Giwa Polytechnic",
     "Best Solution Polytechnic",
     "Global Polytechnic",
@@ -510,7 +551,8 @@ const stateSchools = {
     "Adeyemi College of Education, Ondo",
     "Olekamba College of Education"
   ],
-  "Osun": [
+  "Osun": [    
+  'National Association of Nigerian Students (NANS)',
     "Assanusiya College of Education, Odeomu",
     "Crestfield College of Education",
     "Grace College of Education",
@@ -539,7 +581,8 @@ const stateSchools = {
     "The Polytechnic, Imesi-Ile",
     "Wolex Polytechnic, Iwo"
   ],
-  "Oyo": [
+  "Oyo": [    
+  'National Association of Nigerian Students (NANS)',
     "Novelty Polytechnic Kishi",
     "Saf Polytechnic",
     "Tower Polytechnic, Ibadan",
@@ -568,7 +611,8 @@ const stateSchools = {
     "Delar College of Education",
     "Emmanuel Alayande College of Education"
   ],
-  "Plateau": [
+  "Plateau": [    
+  'National Association of Nigerian Students (NANS)',
     "University of Jos",
     "Karl-Kumm University, Vom, Plateau State",
     "Anan University, Kwall",
@@ -582,7 +626,8 @@ const stateSchools = {
     "College of Education, Gindiri",
     "Federal College of Education, Pankshin"
   ],
-  "Rivers": [
+  "Rivers": [    
+  'National Association of Nigerian Students (NANS)',
     "Federal College of Education (Technical), Omoku",
     "University of Port-Harcourt",
     "Ignatius Ajuru University of Education,Rumuolumeni",
@@ -594,7 +639,8 @@ const stateSchools = {
     "Eastern Polytechnic",
     "Federal Polytechnic of Oil and Gas Bonny"
   ],
-  "Sokoto": [
+  "Sokoto": [    
+  'National Association of Nigerian Students (NANS)',
     "Usumanu Danfodiyo University",
     "Sokoto State University",
     "Shehu Shagari University of Education",
@@ -605,7 +651,8 @@ const stateSchools = {
     "Biga College of Education",
     "Federal College of Education"
   ],
-  "Taraba": [
+  "Taraba": [    
+  'National Association of Nigerian Students (NANS)',
     "Federal University, Wukari",
     "Kwararafa University, Wukari",
     "Taraba State University, Jalingo",
@@ -614,7 +661,8 @@ const stateSchools = {
     "College of Education, Zing",
     "Peacock College of Education, Jalingo"
   ],
-  "Yobe": [
+  "Yobe": [    
+  'National Association of Nigerian Students (NANS)',
     "Federal College of Education (Technical), Potiskum",
     "College of Education, Gashua, Damaturu",
     "Umar Suleiman College Of Education, Gashua",
@@ -625,7 +673,8 @@ const stateSchools = {
     "Federal Polytechnic Damaturu",
     "Mai-Idris Alooma Polytechnic"
   ],
-  "Zamfara": [
+  "Zamfara": [    
+  'National Association of Nigerian Students (NANS)',
     "Zamfara State College of Arts and Science",
     "Federal Polytechnic Kaura Namoda",
     "Abdu Gusau Polytechnic",
@@ -634,7 +683,8 @@ const stateSchools = {
     "Federal College of Education (Technical), Gusau",
     "Zamfara State College of Education, Maru"
   ],
-  "FCT Abuja": [
+  "FCT Abuja": [    
+  'National Association of Nigerian Students (NANS)',
     "Angel Crown College of Education",
     "Sam Ale College of Education",
     "FCT College of Education, Zuba",
@@ -811,11 +861,11 @@ stateSelect.addEventListener('change', () => {
   loadAssociationsForSchool();
 });
 
-// associations loaded from Firestore only (no localStorage)
-function populateAssocSelectWithLocal() {
-  assocSelect.innerHTML = '<option value="">Select association (or Add new)</option>';
-}
-populateAssocSelectWithLocal();
+// // associations loaded from Firestore only (no localStorage)
+// function populateAssocSelectWithLocal() {
+//   assocSelect.innerHTML = '<option value="">Select association (or Add new)</option>';
+// }
+// populateAssocSelectWithLocal();
 
 // ---------- Robust association saving and UI handlers (updated) ----------
 
