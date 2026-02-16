@@ -1,7 +1,7 @@
 // sign.js - Combined Firebase email/password signup + login + Uploadcare upload + Paystack
 // CONFIG: update these if needed
 const REGISTRATION_FEE_NGN = 2950;
-const PAYSTACK_KEY = 'pk_live_c70b41f949305738598a184d69c57c0b24eba0f3'; // replace with your Paystack key
+const PAYSTACK_KEY ='pk_live_c70b41f949305738598a184d69c57c0b24eba0f3' ; // replace with your Paystack key
 const SAVE_USER_ENDPOINT = '/api/auth/register'; // optional server hook (not required if using Firebase)
 
 // UPLOADCARE settings (replaces Imgur)
@@ -735,7 +735,7 @@ let USE_FIREBASE = false;
 let firebaseInited = false;
 let auth = null, db = null;
 
-async function waitForFirebaseSDK(timeoutMs = 5000) {
+async function waitForFirebaseSDK(timeoutMs = 15000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (window.firebase && window.firebase.auth && window.firebase.firestore) return true;
@@ -1427,15 +1427,15 @@ function createModal() {
   const body = document.createElement('div'); body.style.fontSize = '14px'; body.style.color = '#374151'; body.style.marginBottom = '12px';
   const actions = document.createElement('div'); actions.style.display = 'flex'; actions.style.justifyContent = 'center'; actions.style.gap = '8px';
 
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = 'Close';
-  closeBtn.style.padding = '8px 12px';
-  closeBtn.style.borderRadius = '8px';
-  closeBtn.style.border = 'none';
-  closeBtn.style.cursor = 'pointer';
-  closeBtn.addEventListener('click', () => hide());
+  // const closeBtn = document.createElement('button');
+  // closeBtn.textContent = 'Close';
+  // closeBtn.style.padding = '8px 12px';
+  // closeBtn.style.borderRadius = '8px';
+  // closeBtn.style.border = 'none';
+  // closeBtn.style.cursor = 'pointer';
+  // closeBtn.addEventListener('click', () => hide());
 
-  actions.appendChild(closeBtn);
+  // actions.appendChild(closeBtn);
   card.appendChild(title); card.appendChild(body); card.appendChild(actions);
   overlay.appendChild(card);
 
@@ -1443,7 +1443,7 @@ function createModal() {
     title.textContent = 'Please wait';
     body.textContent = message;
     actions.innerHTML = '';
-    actions.appendChild(closeBtn);
+    // actions.appendChild(closeBtn);
     overlay.style.display = 'flex';
   }
   function showSuccess(message = 'Success') {
