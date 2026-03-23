@@ -383,7 +383,13 @@ const stateSchools = {
     "Kebbi State University of Science and Technology",
     "Waziri Umaru Federal Polytechnic (WUFPBK)",
     "Kebbi State Polytechnic (KESPODAK)",
-    "Adamu Augie College of Education, Argungu"
+    "Adamu Augie College of Education, Argungu",
+    " Federal College of Education and Technology yelwa",
+"Federal University of Agriculture Zuru ",
+"Sajo College of Nursing science ",
+ "College of health science and technology jega",
+" College of Agriculture zuru",
+" College of Nursing science Birnin Kebbi",
   ],
   "Kogi": [    
   'National Association of Nigerian Students (NANS)',
