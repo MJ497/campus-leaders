@@ -1,249 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Campus leaders</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@preline/preline@2.0.0/dist/preline.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="main.css">
-  <link rel="shortcut icon" href="logo.png" type="image/x-icon">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>404 — Page Not Found</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#94a3b8;--accent:#60a5fa}
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,var(--bg),#07080b);color:#e6eef8}
+    .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:40px}
+    .card{max-width:880px;width:100%;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);padding:48px;border-radius:12px;backdrop-filter:blur(6px);display:flex;gap:32px;align-items:center}
+    .num{font-size:96px;font-weight:700;color:var(--accent);line-height:1}
+    .info h1{margin:0 0 8px;font-size:28px}
+    .info p{margin:0 0 18px;color:var(--muted)}
+    .actions{display:flex;gap:12px}
+    a.btn{display:inline-block;padding:10px 16px;border-radius:8px;text-decoration:none;color:#081126;background:var(--accent);font-weight:600}
+    a.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    footer{margin-top:18px;color:rgba(230,238,248,0.6);font-size:13px}
+    @media(max-width:640px){.card{flex-direction:column;text-align:center}.num{font-size:72px}}
+  </style>
 </head>
-<body class="bg-white text-gray-900 min-h-screen">
-  <!-- Navigation (unchanged) -->
-  <nav class="bg-white border-b border-gray-200  w-full z-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between h-20 items-center">
-        <!-- LEFT: logo + title -->
-        <div class="flex items-center space-x-10">
-          <a href="index.html" class="flex items-center gap-4">
-            <img src="logo.png" alt="Campus Leaders logo" class="h-20 w-auto flex-shrink-0" />
-            <div class="leading-tight">
-              <div class="text-left">
-                <span class="block font-bold text-gray-900" style="font-size: 13px;">CAMPUS LEADERS</span>
-                <span class="block  font-bold  " style="font-size: 10px;">ARCHIVE</span>
-              </div>
-              <div class="mt-1"></div>
-            </div>
-          </a>
-
-          <div class="hidden md:flex md:space-x-6">
-            <a href="index.html" data-section="dashboard" class="nav-item px-1 py-2 text-sm active-tab">Home</a>
-            <a href="signup.html" data-section="forum" class="nav-item px-1 py-2 text-sm">Profile</a>
-            <a href="signup.html" data-section="courses" class="nav-item px-1 py-2 text-sm">About Us</a>
-            <a href="signup.html" data-section="codelab" class="nav-item px-1 py-2 text-sm">Support</a>
-          </div>
-        </div>
-
-        <!-- RIGHT: search + icons -->
-        <div class="flex items-center space-x-4">
-          <form action="" method="GET" class="hidden md:flex items-center w-80">
-            <label for="global-search" class="sr-only">Search</label>
-            <div class="relative flex-1">
-              <input id="global-search" name="q" type="search" placeholder="Search profile, members, posts..."
-                     class="w-full bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:bg-two" />
-              <button type="submit" aria-label="Search" class="absolute right-1 top-1/2 transform -translate-y-1/2 p-2 rounded-full bghover">
-                <i class="fas fa-search text-gray-600"></i>
-              </button>
-            </div>
-          </form>
-
-          <button id="mobile-search-btn" class="md:hidden p-2 rounded-full bghover" aria-expanded="false" aria-controls="mobile-search">
-            <i class="fas fa-search"></i>
-          </button>
-
-          <div class="relative">
-            <button id="user-menu-button" class="flex items-center p-1 rounded-full focus:outline-none" aria-expanded="false" aria-haspopup="true" aria-controls="user-menu">
-              <div class="h-8 w-8 rounded-full bg-linear text-white flex items-center justify-center">
-                <i class="fas fa-user"></i>
-              </div>
-            </button>
-            <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-gray-200 z-50" role="menu" aria-hidden="true">
-              <a href="signup.html" class="block px-4 py-2 bghover" role="menuitem" tabindex="0">Sign up</a>
-            </div>
-          </div>
-        </div>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="num">404</div>
+      <div class="info">
+        <h1>Page not found</h1>
+        <p>Sorry — the page you were looking for doesn't exist or has been moved.</p>
+       
+        <footer>If you reached this from a link here, please contact the site administrator.</footer>
       </div>
     </div>
-
-    <div id="mobile-search" class="hidden md:hidden border-t border-gray-200 bg-white px-4 py-3">
-      <form action="/search" method="GET" class="flex items-center gap-2">
-        <label for="mobile-search-input" class="sr-only">Search</label>
-        <input id="mobile-search-input" name="q" type="search" placeholder="Search courses, members, posts..."
-               class="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm focus:outline-none" />
-        <button type="submit" aria-label="Search" class="p-2 rounded-full bghover">
-          <i class="fas fa-search"></i>
-        </button>
-        <button id="mobile-search-close" type="button" class="p-2 rounded-full bghover" aria-label="Close search">
-          <i class="fas fa-times"></i>
-        </button>
-      </form>
-    </div>
-  </nav>
-
-  <!-- HERO CAROUSEL (full width) -->
-  <section id="news-hero" class="w-full ">
-    <div class="relative w-full overflow-hidden">
-      <div id="news-carousel" class="relative w-full">
-        <div class="relative h-[50vh] md:h-[70vh] lg:h-[80vh]">
-          <!-- slides container (populated by news-loader.js) -->
-          <div id="carousel-slides" class="relative w-full h-full"></div>
-
-    <!-- Overlay that covers the entire hero section (gradient: transparent top -> green bottom) -->
-    <div id="hero-overlay" class="absolute inset-0 pointer-events-none z-20" aria-hidden="true"
-      style="background: linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0, 0, 0, 0.637) 40%, rgb(12, 14, 13) 100%);">
-    </div>
-
-          <!-- prev/next controls -->
-          <button id="carousel-prev" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-3 rounded-full shadow-md z-20" aria-label="Previous slide">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-          <button id="carousel-next" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white/95 p-3 rounded-full shadow-md z-20" aria-label="Next slide">
-            <i class="fas fa-chevron-right"></i>
-          </button>
-
-          <!-- indicators -->
-          <div id="carousel-indicators" class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 z-20"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- main content (three columns) -->
-  <main class="pt-8 pb-8">
-    <section id="dashboard" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <!-- LEFT: CTA -->
-        <div class="lg:col-span-1 space-y-6 ">
-          <div class="card bg-white p-6 border border-gray-200">
-            <div class="flex flex-col items-center">
-              <div class="h-20 w-20 rounded-full  bg-linear text-white flex items-center justify-center mb-3 text-2xl">
-                <i class="fas fa-user"></i>
-              </div>
-              <h3 class="font-bold">Create Account/Login</h3>
-              <a href="signup.html"><p class="text-sm  mb-4" style="color: var(--two);">Join Now</p></a>
-              <div class="w-full border-t border-gray-200 pt-4">
-                <div class="flex justify-between text-sm mb-2">
-                  <span class="font-medium"></span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CENTER: feed column (posts) -->
-        <div class="lg:col-span-2 space-y-6" id="feed-column">
-          <!-- posts-feed gets injected here by your inline script -->
-          <div id="posts-feed" class="space-y-6">
-            <div class="p-6 text-sm text-gray-500">Loading feed…</div>
-          </div>
-        </div>
-
-        <!-- RIGHT: trending (green background, white uppercase) -->
-        <div class="lg:col-span-1 space-y-6">
-          <div class="p-6 rounded border border-gray-200 bg-green-600 text-white">
-              <h3 class="font-bold mb-4 uppercase">Trending News</h3>
-              <div class="space-y-4 trending-news-list">
-                <div class="text-sm text-white p-2">Loading news…</div>
-              </div>
-            </div>
-        </div>
-
-      </div>
-    </section>
-  </main>
-
-  <footer class="bg-gray-900 text-white border-t border-gray-200 py-8 mt-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-        <div>
-          <h3 class="font-bold text-lg mb-4">Campus leaders Archive</h3>
-          <p class="text-sm text-white">The community for sharing, and growing together.</p>
-        </div>
-        <div>
-          <h4 class="font-medium mb-3">Community</h4>
-          <ul class="space-y-2">
-            <li><a href="#" class="text-sm text-white hover">Events</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-medium mb-3">Company</h4>
-          <ul class="space-y-2">
-            <li><a href="signup.html" class="text-sm text-white hover">About</a></li>
-            <li><a href="signup.html" class="text-sm text-white hover">Contact</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-medium mb-3">Socials</h4>
-           <ul class="space-y-2">
-            <li>  <a href="https://x.com/CampusArchive" class="text-white hover"><i class="fab fa-twitter"></i>Twitter</a>  </li>
-
-   <li><a href="https://www.tiktok.com/@campus.leaders.ar?_r=1&_t=ZN-92ge01F5CgI" class="text-white hover"><i class="fab fa-instagram"></i>Tiktok</a> </li>
-            <li><a href="https://www.instagram.com/campus_leaders_archive?igsh=MXBvOW56ejIydDlpaw==" class="text-white hover"><i class="fab fa-instagram"></i>Instagram</a> </li>
-            <li> <a href="https://www.facebook.com/profile.php?id=61581544298490" class="text-white hover"><i class="fab fa-facebook"></i>Facebook</a> </li>
-             <li> <a href="https://www.linkedin.com/in/campus-leaders-archive-282a003a4?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" class="text-white hover"><i class="fab fa-linkedin"></i>linkedin</a> </li>
-               <li> <a href="https://youtube.com/@campusleadersarchive?si=LuJkDclTEZWZqcPL" class="text-white hover"><i class="fab fa-youtube"></i>Youtube</a> </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </footer>
-
-  <!-- Firebase compat SDKs (required) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-  <!-- your loader scripts --><script src="main.js" defer></script>
-  <script src="news-loader.js" defer></script>
-  
-
-
-  <!-- small UX: user menu toggle (moved here in case main.js assumes it exists) -->
-  <script>
-    (function(){
-      const umBtn = document.getElementById('user-menu-button');
-      const um = document.getElementById('user-menu');
-      if(umBtn && um){
-        umBtn.addEventListener('click', function(e){
-          e.stopPropagation();
-          um.classList.toggle('hidden');
-        });
-        document.addEventListener('click', function(ev){
-          if(!um.contains(ev.target) && !umBtn.contains(ev.target)) um.classList.add('hidden');
-        });
-      }
-      const mobileSearchBtn = document.getElementById('mobile-search-btn');
-      mobileSearchBtn && mobileSearchBtn.addEventListener('click', ()=>{
-        const ms = document.getElementById('mobile-search');
-        ms && ms.classList.toggle('hidden');
-      });
-      document.getElementById('mobile-search-close')?.addEventListener('click', ()=>{
-        document.getElementById('mobile-search')?.classList.add('hidden');
-      });
-    })();
-  </script>
-    <script>
-    // Make mobile search bar work like desktop search
-    document.addEventListener('DOMContentLoaded', function() {
-      const mobileSearchForm = document.querySelector('#mobile-search form');
-      const mobileSearchInput = document.querySelector('#mobile-search input[name="q"]');
-      if (mobileSearchForm && mobileSearchInput && typeof doSearch === 'function') {
-        mobileSearchForm.addEventListener('submit', function(e) {
-          e.preventDefault();
-          const q = mobileSearchInput.value.trim();
-          if (q) doSearch(q);
-        });
-        mobileSearchInput.addEventListener('keydown', function(e) {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            const q = mobileSearchInput.value.trim();
-            if (q) doSearch(q);
-          }
-        });
-      }
-    });
-    </script>
+  </div>
 </body>
 </html>
